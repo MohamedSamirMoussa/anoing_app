@@ -18,7 +18,7 @@ const upsertPlayer = async (
   };
 
   const rank = getRank(playTime.hours);
-  let dbPlayer = await LeaderboardModel.findOne({ username });
+  let dbPlayer = await LeaderboardModel.findOne({ username:username } as any);
 
   if (!dbPlayer) {
     dbPlayer = new LeaderboardModel({

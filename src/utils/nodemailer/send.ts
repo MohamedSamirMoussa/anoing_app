@@ -18,7 +18,7 @@ export const sendEmail = async (data: Mail.Options): Promise<void> => {
     },
   });
 
-  const _info: SMTPTransport.SentMessageInfo = await transporter.sendMail({
+ await transporter.sendMail({
     from: `"From:${process.env.APP_EMAIL}" "APP:${process.env.APP_NAME}"`,
     ...data,
   });

@@ -34,7 +34,7 @@ export abstract class DBrepository<TDocument> {
     options,
     select,
   }: {
-    filter: QueryFilter<TDocument>;
+    filter: any;
     options?: QueryOptions<TDocument>;
     select?: ProjectionType<TDocument>;
   }): Promise<LeanType<TDocument> | HydratedDocument<TDocument> | null> {
@@ -63,7 +63,7 @@ export abstract class DBrepository<TDocument> {
     update,
     options,
   }: {
-    filter: QueryFilter<TDocument>;
+    filter: any;
     update: UpdateQuery<TDocument>;
     options?: MongooseUpdateQueryOptions<TDocument>;
   }): Promise<UpdateWriteOpResult> {
@@ -74,7 +74,7 @@ export abstract class DBrepository<TDocument> {
     filter,
     options,
   }: {
-    filter: QueryFilter<TDocument>;
+    filter: any;
     options?: MongooseBaseQueryOptions<TDocument>;
   }): Promise<DeleteResult> {
     return await this.model.deleteOne(filter, options);
@@ -85,7 +85,7 @@ export abstract class DBrepository<TDocument> {
     update,
     options,
   }: {
-    filter: QueryFilter<TDocument>;
+    filter: any;
     update: UpdateQuery<TDocument>;
     options?: QueryOptions;
   }) {
@@ -100,7 +100,7 @@ export abstract class DBrepository<TDocument> {
     filter = {},
     options,
   }: {
-    filter: QueryFilter<TDocument>;
+    filter: any;
     options?: QueryOptions<TDocument>;
   }) {
     return await this.model.find(filter, undefined, options);

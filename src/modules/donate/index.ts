@@ -1,0 +1,1 @@
+export {router as donateController} from './donate.controller'

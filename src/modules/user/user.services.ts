@@ -37,11 +37,9 @@ import { LogoutEnum } from "../../middleware";
 import { UpdateQuery } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import axios from "axios";
-
 class UserServices {
   private userModel = new UserRepository(UserModel);
   private leaderboardModel = new LeaderboardRepository(LeaderboardModel);
-
   private async handleLoginSuccess(res: Response, user: HUserDoc) {
     const { access_token, refresh_token } = await createLoginCredentials(user);
     const signatureLevel = await detectSignature(user.role);
@@ -49,16 +47,13 @@ class UserServices {
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none" as any, // مهم للـ Cross-site في الـ Production
     };
 
     res.cookie("access_token", access_token, cookieOptions);
     res.cookie("refresh_token", refresh_token, cookieOptions);
     res.cookie("signature_level", signatureLevel, cookieOptions);
   }
-
   constructor() {}
-
   register = async (
     req: Request,
     res: Response,
@@ -68,7 +63,7 @@ class UserServices {
       const { username, email, password, gender }: RegisterType = req.body;
 
       const isUserExist = await this.userModel.findOne({
-        filter: { email } as any,
+        filter: { email },
         options: { lean: true },
         select: "email",
       });
@@ -80,25 +75,23 @@ class UserServices {
         subject: SubjectEnum.registration,
       });
 
-      // إصلاح مشكلة المصفوفة الراجعة من الـ Repository
-      const createdResult = await this.userModel.create({
-        data: [
-          {
-            username,
-            email,
-            password: await hashed(password),
-            gender,
-            role: RoleEnum.user as any,
-            confirmEmailOtp: encryption(OTP),
-            expiredOtpAt: new Date(Date.now() + 1 * 60 * 1000),
-            expireAt: new Date(Date.now() + 30 * 60 * 1000),
-            isLogged: false,
-          },
-        ],
-        options: { validateBeforeSave: true },
-      });
-
-      const user = createdResult && createdResult.length > 0 ? createdResult[0] : null;
+      const [user] =
+        (await this.userModel.create({
+          data: [
+            {
+              username,
+              email,
+              password: await hashed(password),
+              gender,
+              role: RoleEnum.user,
+              confirmEmailOtp: encryption(OTP),
+              expiredOtpAt: new Date(Date.now() + 1 * 60 * 1000), //1 min
+              expireAt: new Date(Date.now() + 30 * 60 * 1000), // 30 min
+              isLogged: false,
+            },
+          ],
+          options: { validateBeforeSave: true },
+        })) || [];
 
       if (!user) throw new BadRequestError("User creation failed");
 
@@ -119,27 +112,32 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { email, otp }: ConfirmEmailType = req.body;
-      if (!email || !otp) throw new BadRequestError("Email and OTP are required");
+      if (!email || !otp) {
+        throw new BadRequestError("Email and OTP are required");
+      }
 
-      const user: any = await this.userModel.findOne({
-        filter: { email } as any,
+      const user = await this.userModel.findOne({
+        filter: { email },
         options: { lean: false },
       });
+      if (user?.confirmedAt)
+        throw new ConflictError("Email is confirmed already");
 
-      if (!user) throw new BadRequestError("Email doesn't exists");
-      if (user.confirmedAt) throw new ConflictError("Email is confirmed already");
+      if (!user) throw new BadRequestError("Email isn't exists");
 
       const otpExpired = user.expiredOtpAt && user.expiredOtpAt < new Date();
 
       if (
-        decryption(user.confirmEmailOtp as string) !== otp ||
+        decryption(user?.confirmEmailOtp as string) !== otp ||
         otpExpired ||
         !user.confirmEmailOtp
       ) {
         user.confirmEmailOtp = undefined;
         user.expiredOtpAt = undefined;
         await user.save();
-        throw new BadRequestError("Invalid or Expired OTP");
+        throw new BadRequestError(
+          "Invalid or Expired OTP ... Please resend OTP or re-register after 30 minutes",
+        );
       }
 
       user.confirmedAt = new Date();
@@ -148,7 +146,11 @@ class UserServices {
       user.expiredOtpAt = undefined;
       await user.save();
 
-      return successHandler({ res, status: 200, message: "Email confirmed" });
+      return successHandler({
+        res,
+        status: 200,
+        message: "Email confirmed successfully",
+      });
     } catch (error) {
       next(error);
     }
@@ -161,25 +163,38 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { email }: ResendOtpType = req.body;
-      const user: any = await this.userModel.findOne({
-        filter: { email } as any,
+
+      if (!email) throw new BadRequestError("Email is required");
+      const user = await this.userModel.findOne({
+        filter: { email },
         options: { lean: false },
       });
-
       if (!user) throw new NotFoundError("User not found");
-
       if (!user.confirmedAt) {
-        const otp = generateOtp({ email: user.email, subject: SubjectEnum.registration });
+        if (user.confirmedAt)
+          throw new ConflictError("Email is already confirmed");
+        const otp = generateOtp({
+          user: user as HUserDoc,
+          subject: SubjectEnum.registration,
+        });
         user.confirmEmailOtp = encryption(otp);
-        user.expiredOtpAt = new Date(Date.now() + 1 * 60 * 1000);
+        user.expiredOtpAt = new Date(Date.now() + 1 * 60 * 1000); //1 min
+        user.expireAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
         await user.save();
       } else {
-        const otp = generateOtp({ email: user.email, subject: SubjectEnum.resetPassword });
+        const otp = generateOtp({
+          user: user as HUserDoc,
+          subject: SubjectEnum.resetPassword,
+        });
         user.forgetPasswordOtp = encryption(otp);
-        user.forgetPasswordOtpExpireAt = new Date(Date.now() + 1 * 60 * 1000);
+        user.forgetPasswordOtpExpireAt = new Date(Date.now() + 1 * 60 * 1000); //1 min
         await user.save();
       }
-      return successHandler({ res, message: "OTP resent" });
+      return successHandler({
+        res,
+        status: 200,
+        message: "OTP resent successfully",
+      });
     } catch (error) {
       next(error);
     }
@@ -193,21 +208,34 @@ class UserServices {
     try {
       const { email, password }: LoginType = req.body;
 
-      const user: any = await this.userModel.findOneAndUpdate({
-        filter: { email } as any,
-        update: { isLogged: true } as any,
+      if (!email || !password)
+        throw new BadRequestError("Email and Password are required");
+
+      const user = await this.userModel.findOneAndUpdate({
+        filter: { email },
+        update: { isLogged: true },
         options: { lean: true },
       });
+      if (!user)
+        throw new NotFoundError("User not found ... please register first");
 
-      if (!user) throw new NotFoundError("User not found");
-      if (!user.confirmedAt) throw new ConflictError("Please confirm email");
+      if (!user.confirmedAt)
+        throw new ConflictError("Please confirm your email first");
 
-      if (user.password && !(await compareHash(password, user.password))) {
+      if (
+        (user.password && !(await compareHash(password, user?.password))) ||
+        user.email !== email
+      ) {
         throw new BadRequestError("Invalid credentials");
       }
 
       await this.handleLoginSuccess(res, user as HUserDoc);
-      return successHandler({ res, status: 202, message: "Login successful" });
+
+      return successHandler({
+        res,
+        status: 202,
+        message: "Login successful",
+      });
     } catch (error) {
       next(error);
     }
@@ -220,10 +248,14 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { token } = req.body;
-      const { name, email } = await verifyGoogleToken(token);
 
-      let user: any = await this.userModel.findOne({
-        filter: { email } as any,
+      const { name, email } = await verifyGoogleToken(token);
+      if (!email || !name) {
+        throw new BadRequestError("Invalid Google data");
+      }
+
+      let user: HUserDoc | null = await this.userModel.findOne({
+        filter: { email },
         options: { lean: false },
       });
 
@@ -233,23 +265,32 @@ class UserServices {
             {
               username: name,
               email,
-              provider: ProvidersEnum.google as any,
+              provider: ProvidersEnum.google,
               confirmedAt: new Date(),
               isLogged: true,
-              role: RoleEnum.user as any,
+              role: RoleEnum.user,
             },
           ],
+          options: { validateBeforeSave: true },
         });
-        user = createdUsers && createdUsers.length > 0 ? createdUsers[0] : null;
+
+        // خد أول عنصر من المصفوفة لأنك باعت يوزر واحد بس
+        user = createdUsers ? createdUsers[0] : null;
       } else {
         user.isLogged = true;
         await user.save();
       }
 
-      if (!user) throw new BadRequestError("Login failed");
+      if (!user) {
+        throw new BadRequestError("User not created");
+      }
 
       await this.handleLoginSuccess(res, user as HUserDoc);
-      return successHandler({ res, message: "Google Login Success" });
+      return successHandler({
+        res,
+        status: 200,
+        message: "Login with Google success",
+      });
     } catch (error) {
       next(error);
     }
@@ -257,7 +298,9 @@ class UserServices {
 
   discordRedirect = (req: Request, res: Response) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
-    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(process.env.DISCORD_REDIRECT_URI || "")}&scope=identify`;
+
+    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
+
     return successHandler({ res, result: discordUrl });
   };
 
@@ -268,6 +311,8 @@ class UserServices {
   ): Promise<void> => {
     try {
       const code = req.query.code as string;
+      if (!code) throw new BadRequestError("Code is required");
+
       const params = new URLSearchParams({
         client_id: process.env.DISCORD_CLIENT_ID as string,
         client_secret: process.env.DISCORD_SECRET_ID as string,
@@ -276,130 +321,283 @@ class UserServices {
         redirect_uri: process.env.DISCORD_REDIRECT_URI as string,
       });
 
-      const tokenRes = await axios.post("https://discord.com/api/oauth2/token", params.toString(), {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      const tokenRes = await axios.post(
+        "https://discord.com/api/oauth2/token",
+        params.toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+        },
+      );
 
       const userRes = await axios.get("https://discord.com/api/users/@me", {
-        headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
+        headers: {
+          Authorization: `Bearer ${tokenRes.data.access_token}`,
+        },
       });
 
       const discordUser = userRes.data;
-      let user: any = await this.userModel.findOne({
-        filter: { discordId: discordUser.id } as any,
+
+      let user: HUserDoc | null = await this.userModel.findOne({
+        filter: { discordId: discordUser.id },
         options: { lean: false },
       });
 
       if (!user) {
-        const created = await this.userModel.create({
-          data: [{
-            username: discordUser.username,
-            discordId: discordUser.id,
-            provider: ProvidersEnum.discord as any,
-            confirmedAt: new Date(),
-            isLogged: true,
-            role: RoleEnum.user as any,
-          }],
+        user = await this.userModel.create({
+          data: [
+            {
+              username: discordUser.username,
+              email: discordUser.email ?? undefined,
+              discordId: discordUser.id,
+              provider: ProvidersEnum.discord,
+              confirmedAt: new Date(),
+              isLogged: true,
+              role: RoleEnum.user,
+            },
+          ],
+          options: { validateBeforeSave: true },
         });
-        user = created && created.length > 0 ? created[0] : null;
       } else {
         user.isLogged = true;
         await user.save();
       }
 
+      if (!user) {
+        throw new BadRequestError("User not created after Discord login");
+      }
+
       await this.handleLoginSuccess(res, user as HUserDoc);
-      res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
+
+      // Redirect ONLY (no JSON after redirect)
+      res.redirect("http://localhost:3000");
     } catch (error) {
       next(error);
     }
   };
 
-  checkAuth = async (req: Request, res: Response, next: NextFunction) => {
+  checkAuth = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
+      const token = req.cookies.access_token;
+      if (!token) throw new BadRequestError("Please login first");
+
       const user = await this.userModel.findOne({
-        filter: { email: req.user?.email } as any,
+        filter: { email: req.user?.email || {} },
         options: { lean: true },
         select: "username email role isLogged",
       });
-      return successHandler({ res, result: user });
-    } catch (error) { next(error); }
+
+      if (!user) throw new BadRequestError("user not found");
+
+      return successHandler({
+        res,
+        result: user,
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  refreshToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
       const credentials = await createLoginCredentials(req.user as HUserDoc);
       await createRevokeToken(req.decode as JwtPayload);
-      return successHandler({ res, status: 201, result: credentials });
-    } catch (error) { next(error); }
+      return successHandler({
+        res,
+        status: 201,
+        result: credentials,
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  forgetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  forgetPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
       const { email } = req.body;
-      const user: any = await this.userModel.findOne({ filter: { email } as any, options: { lean: false } });
-      if (!user) throw new NotFoundError("User not found");
+      if (!email) throw new BadRequestError("Email is required");
 
-      const OTP = generateOtp({ email: user.email, subject: SubjectEnum.resetPassword });
+      const user = await this.userModel.findOne({
+        filter: { email },
+        options: { lean: false },
+      });
+      const OTP = await generateOtp({
+        user: user as HUserDoc,
+        subject: SubjectEnum.resetPassword,
+      });
+
+      if (!user) throw new NotFoundError("User not found");
       user.forgetPasswordOtp = encryption(OTP);
-      user.forgetPasswordOtpExpireAt = new Date(Date.now() + 5 * 60 * 1000);
+      user.forgetPasswordOtpExpireAt = new Date(Date.now() + 1 * 60 * 1000);
       await user.save();
 
-      return successHandler({ res, message: "OTP sent" });
-    } catch (error) { next(error); }
+      if (
+        user.forgetPasswordOtpExpireAt &&
+        user.forgetPasswordOtpExpireAt < new Date()
+      ) {
+        throw new BadRequestError(
+          "OTP already sent, please wait before requesting again",
+        );
+      }
+
+      return successHandler({ res });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  confirmPasswordOtp = async (req: Request, res: Response, next: NextFunction) => {
+  confirmPasswordOtp = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
       const { otp, email } = req.body;
-      const user: any = await this.userModel.findOne({ filter: { email } as any, options: { lean: false } });
-      if (!user || decryption(user.forgetPasswordOtp) !== otp) throw new BadRequestError("Invalid OTP");
+
+      if (!otp || !email)
+        throw new BadRequestError("OTP and Email are required");
+
+      const user = await this.userModel.findOne({
+        filter: { email },
+        options: { lean: false },
+      });
+      if (!user)
+        throw new BadRequestError(
+          "Something went wrong ... Please check your email",
+        );
+
+      const otpExpired =
+        user.forgetPasswordOtpExpireAt &&
+        user.forgetPasswordOtpExpireAt < new Date();
+
+      if (otpExpired) {
+        user.forgetPasswordOtp = undefined;
+        user.forgetPasswordOtpExpireAt = undefined;
+        await user.save();
+        throw new BadRequestError("Expired OTP");
+      }
+
+      if (!user.forgetPasswordOtp)
+        throw new ConflictError("Please resend your OTP code");
+
+      if (decryption(user?.forgetPasswordOtp as string) !== otp || otpExpired) {
+        throw new BadRequestError("Invalid or Expired OTP");
+      }
 
       user.forgetPasswordOtp = undefined;
+      user.forgetPasswordOtpExpireAt = undefined;
       user.confirmForgetPasswordAt = new Date();
       await user.save();
-      return successHandler({ res, message: "OTP confirmed" });
-    } catch (error) { next(error); }
+
+      return successHandler({
+        res,
+        status: 200,
+        message: "Reset password confirmed",
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  resetPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
-      const { email, newPassword } = req.body;
-      const user: any = await this.userModel.findOne({ filter: { email } as any, options: { lean: false } });
-      if (!user?.confirmForgetPasswordAt) throw new ConflictError("Verify email first");
+      const { email, newPassword, confirmPassword } = req.body;
 
-      user.password = await hashed(newPassword);
-      user.confirmForgetPasswordAt = undefined;
+      if (!email || !newPassword || !confirmPassword)
+        throw new BadRequestError(
+          "New password , Confirm password and Email are required",
+        );
+
+      const user = await this.userModel.findOne({
+        filter: { email },
+        options: { lean: false },
+      });
+
+      if (!user) throw new ConflictError("Something went wrong");
+      if (!user?.confirmForgetPasswordAt) {
+        throw new ConflictError(
+          "Please verify your email to complete your process",
+        );
+      }
+      user.password = await hashed(newPassword as string);
       await user.save();
-      return successHandler({ res, message: "Password updated" });
-    } catch (error) { next(error); }
+
+      return successHandler({
+        res,
+        status: 202,
+        message: "Password Changed",
+      });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+  getAllUsers = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
-      const webUsers = await this.userModel.find({ filter: {} as any });
-      const gameUsers = await this.leaderboardModel.find({ filter: {} as any });
+      if (!req.user) throw new BadRequestError("Please Login First");
+
+      const webUsers = await this.userModel.find({ filter: {} });
+      const gameUsers = await this.leaderboardModel.find({ filter: {} });
+
       return successHandler({ res, result: { webUsers, gameUsers } });
-    } catch (error) { next(error); }
+    } catch (error) {
+      next(error);
+    }
   };
 
-  logout = async (req: Request, res: Response, next: NextFunction) => {
+  logout = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
     try {
       const { flag }: LogoutType = req.body;
-      let update: any = { isLogged: false };
 
-      if (flag === LogoutEnum.All) {
-        update.changedCredentialsAt = new Date();
-      } else {
-        await createRevokeToken(req.decode as JwtPayload);
+      let update: UpdateQuery<IUserSchema> = {};
+
+      switch (flag) {
+        case LogoutEnum.All:
+          update.changedCredentialsAt = new Date();
+          update.isLogged = false;
+          break;
+
+        default:
+          await createRevokeToken(req.decode as JwtPayload);
+          update.isLogged = false;
+          break;
       }
 
       await this.userModel.updateOne({
-        filter: { _id: req.user?._id } as any,
+        filter: { _id: req.user?._id },
         update,
       });
 
-      return successHandler({ res, message: "Logged out" });
-    } catch (error) { next(error); }
+      return successHandler({ res });
+    } catch (error) {
+      next(error);
+    }
   };
 }
 

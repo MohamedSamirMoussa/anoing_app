@@ -11,7 +11,6 @@ import {
   Types,
   UpdateQuery,
   UpdateWriteOpResult,
-  QueryFilter,
 } from "mongoose";
 
 export type LeanType<T> = HydratedDocument<FlattenMaps<T>>;

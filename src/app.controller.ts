@@ -12,6 +12,8 @@ import cookieParser from "cookie-parser";
 import { donateController } from "./modules/donate";
 if (process.env.NODE_ENV !== "production") {
   config({ path: resolve("./config/.env.development") });
+} else {
+  config();
 }
 const bootstrap = async (app: Express): Promise<void> => {
   const PORT: number = Number(process.env.PORT) || 3000;
@@ -53,15 +55,15 @@ const bootstrap = async (app: Express): Promise<void> => {
     });
   });
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.status(404).json({
-    message: "Page not found",
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.status(404).json({
+      message: "Page not found",
+    });
   });
-});
 
   app.use(globalErrorHandling);
 
-if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production") {
     app.listen(PORT, () => {
       console.log(`Server is running on port ::: ${PORT}`);
     });

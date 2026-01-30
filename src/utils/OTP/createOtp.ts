@@ -1,7 +1,7 @@
-import { customAlphabet } from "nanoid";
 import { HUserDoc } from "../../DB";
 import { template } from "../nodemailer/templete";
 import { emailEmitter } from "../nodemailer/email";
+import { BadRequestError } from "../errors/errors";
 
 export enum SubjectEnum {
   registration = "Verify Your Email",
@@ -14,8 +14,8 @@ export enum OTPSubject {
 }
 
 export const createOtp = (): string => {
-  const otp: () => string = customAlphabet("0123456789", 6);
-  return otp();
+  return String(Math.floor(Math.random() * (999999 - 100000 + 1) + 100000))
+  
 };
 
 export const generateOtp = ({
@@ -29,15 +29,23 @@ export const generateOtp = ({
 }) => {
   const otp: string = createOtp();
   let html: string = "";
+
+const targetEmail = email || user?.email;
+
+  if (!targetEmail) {
+    
+    throw new BadRequestError("No email provided for OTP. Mail emission skipped")
+  }
+
   switch (subject) {
     case SubjectEnum.resetPassword:
       html = template(otp, "Reset your password");
-      emailEmitter.emit("forgetPassword", { to: user?.email, html });
+      emailEmitter.emit("forgetPassword", { to:targetEmail, html });
       break;
 
     default:
       html = template(otp, "Verify your email");
-      emailEmitter.emit("confirmEmail", { to: email, html });
+      emailEmitter.emit("confirmEmail", { to: targetEmail, html });
       break;
   }
 

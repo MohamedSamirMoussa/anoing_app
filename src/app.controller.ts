@@ -61,9 +61,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
   app.use(globalErrorHandling);
 
-  app.listen(PORT, () => {
-    console.log(`BE Server is running on port ::: ${PORT}`);
-  });
+if (process.env.NODE_ENV !== "production") {
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ::: ${PORT}`);
+    });
+  }
 };
 
 export default bootstrap;

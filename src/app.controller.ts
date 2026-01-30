@@ -2,19 +2,22 @@ import rateLimit from "express-rate-limit";
 import cors from "cors";
 import helmet from "helmet";
 import type { NextFunction, Response, Request, Express } from "express";
-import { DBconnection } from "./DB";
-import { globalErrorHandling } from "./utils";
 import { config } from "dotenv";
 import { resolve } from "path";
 import express from "express";
-import { authController, blogRouter, leaderboardController } from "./modules";
 import cookieParser from "cookie-parser";
-import { donateController } from "./modules/donate";
+
 if (process.env.NODE_ENV !== "production") {
   config({ path: resolve("./config/.env.development") });
 } else {
-  config();
+  config()
 }
+
+import { authController, blogRouter, leaderboardController } from "./modules";
+import { DBconnection } from "./DB";
+import { globalErrorHandling } from "./utils";
+import { donateController } from "./modules/donate";
+
 const bootstrap = async (app: Express): Promise<void> => {
   const PORT: number = Number(process.env.PORT) || 3000;
 

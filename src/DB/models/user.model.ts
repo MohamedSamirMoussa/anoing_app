@@ -120,8 +120,6 @@ const schema = new Schema<IUserSchema>(
 );
 
 schema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
-schema.index({ googleId: 1 }, { sparse: true });
-schema.index({ discordId: 1 }, { sparse: true });
 export const UserModel: Model<IUserSchema> =
   (models.User as any) || model<IUserSchema>("User", schema);
 export type HUserDoc = HydratedDocument<IUserSchema>;

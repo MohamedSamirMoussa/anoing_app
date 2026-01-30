@@ -14,4 +14,4 @@ router.post(
   cloudFileUpload({ storageApproach: StorageEnum.disk }).single("image"),
   blogServices.createBlog,
 );
-router.get("/", authentication(), blogServices.getBlogs);
+router.get("/", blogServices.getBlogs);

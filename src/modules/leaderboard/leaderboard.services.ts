@@ -103,9 +103,6 @@ class LeaderboardServices {
       throw new BadRequestError("Please provide a username to search");
     }
 
-    const filter: any = {
-      username: { $regex: username, $options: "i" },
-    };
 
 
     const searchResult = await this.leaderboardModel.find({

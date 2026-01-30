@@ -22,7 +22,7 @@ export interface IUserSchema {
   password?: string;
   email?: string;
   resetpasswordOtp?: string;
-  confirmEmailOtp?: string | undefined;
+  confirmEmailOtp?: string ;
   gender: GenderEnum;
   role: RoleEnum;
   provider: ProvidersEnum;
@@ -30,11 +30,11 @@ export interface IUserSchema {
   updatedAt?: Date;
   confirmedAt: Date;
   changedCredentialsAt: Date;
-  expireAt: Date | undefined;
-  expiredOtpAt: Date | undefined;
-  forgetPasswordOtp: string | undefined;
-  forgetPasswordOtpExpireAt: Date | undefined;
-  confirmForgetPasswordAt: Date | undefined;
+  expireAt: Date;
+  expiredOtpAt: Date;
+  forgetPasswordOtp: string;
+  forgetPasswordOtpExpireAt: Date;
+  confirmForgetPasswordAt: Date;
 
   googleId?: string;
   discordId?: string;
@@ -54,7 +54,7 @@ const schema = new Schema<IUserSchema>(
     },
     email: {
       type: String,
-      required: function (): boolean {
+      required: function (): any {
         return this.provider === ProvidersEnum.system;
       },
       unique: true,
@@ -62,7 +62,7 @@ const schema = new Schema<IUserSchema>(
     password: {
       type: String,
 
-      required: function (): boolean {
+      required: function (): any {
         return this.provider === ProvidersEnum.system;
       },
     },
@@ -74,7 +74,7 @@ const schema = new Schema<IUserSchema>(
     },
     gender: {
       type: String,
-      required: function (): boolean {
+      required: function (): any {
         return this.provider === ProvidersEnum.system;
       },
       enum: Object.values(GenderEnum),

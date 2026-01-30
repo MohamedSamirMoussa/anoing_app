@@ -242,7 +242,7 @@ class UserServices {
 
   discordRedirect = (req: Request, res: Response) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
-    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(process.env.DISCORD_REDIRECT_URI || "")}&scope=identify`;
+    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=https%3A%2F%2Fanoing-app.vercel.app%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
     return successHandler({ res, result: {discordUrl} });
   };
 

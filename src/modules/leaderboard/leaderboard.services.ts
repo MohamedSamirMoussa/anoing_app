@@ -70,7 +70,7 @@ class LeaderboardServices {
       const skip = (page - 1) * limit;
 
       const { sortedLeaderboard, onlineCount } =
-        await getConnectionWithServer(serverName);
+        await getConnectionWithServer(serverName as string);
 
       if (!sortedLeaderboard || sortedLeaderboard.length === 0)
         throw new BadRequestError("No leaderboard data found");

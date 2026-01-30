@@ -9,7 +9,7 @@ import {
   UserRepository,
 } from "../../DB";
 import { BadRequestError, NotAuthorizedError } from "../errors/errors";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 export enum SignatureEnumLevels {
   Bearer = "Bearer",
   System = "System",
@@ -99,7 +99,7 @@ export const createLoginCredentials = async (user: HUserDoc) => {
   const signatureLevel = await detectSignature(user.role);
 
   const signature = await getSignature(signatureLevel);
-  const jwtid = uuid();
+  const jwtid = randomUUID();
   const access_token = await generateToken({
     payload: { id: user._id },
     secret: signature.access_signature,

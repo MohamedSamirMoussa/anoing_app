@@ -1,4 +1,4 @@
-import { ILeaderboardUser, LeaderboardModel } from "../../DB";
+import { DBconnection, ILeaderboardUser, LeaderboardModel } from "../../DB";
 import { getRcon } from "./rcon.connection";
 
 const parsePlayTime = (raw: string): number => {
@@ -73,6 +73,9 @@ export const getConnectionWithServer = async (): Promise<{
   sortedLeaderboard: ILeaderboardUser[];
   onlineCount: number;
 }> => {
+
+  await DBconnection()
+
   const rcon = await getRcon();
 
   try {
@@ -115,7 +118,5 @@ export const getConnectionWithServer = async (): Promise<{
   } catch (error) {
     console.error("RCON connection failed:", error);
     return { sortedLeaderboard: [], onlineCount: 0 };
-  } finally {
-    await rcon.end();
   }
 };

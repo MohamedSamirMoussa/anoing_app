@@ -25,30 +25,21 @@ export const getRcon = async (): Promise<Rcon> => {
 
   // 🔴 CHANGED: لو في محاولة اتصال شغالة، انتظر شويه
   if (isConnecting) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     return getRcon();
   }
 
   isConnecting = true;
 
-  rcon = new Rcon(RCONconfig);
-
-  rcon.on("end", async () => {
-    console.log("RCON disconnected, will attempt reconnect in 5s...");
-    rcon = null;
+  try {
+    rcon = new Rcon(RCONconfig);
+    rcon.on("end", () => { rcon = null; console.log("RCON disconnected"); });
+    rcon.on("error", (err) => { rcon = null; console.error("RCON Error:", err); });
+    
+    await rcon.connect();
+    console.log("RCON connected successfully");
+    return rcon;
+  } finally {
     isConnecting = false;
-    // 🔴 CHANGED: reconnect سيتم من getRcon الجديد عند الاستدعاء
-  });
-
-  rcon.on("error", (err) => {
-    console.error("RCON error:", err);
-    rcon = null;
-    isConnecting = false;
-  });
-
-  await rcon.connect();
-  console.log("RCON connected successfully");
-
-  isConnecting = false;
-  return rcon;
+  }
 };

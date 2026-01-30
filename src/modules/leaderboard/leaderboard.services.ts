@@ -108,8 +108,6 @@ class LeaderboardServices {
     const searchResult = await this.leaderboardModel.find({
       filter:{username:{$regex:username,$options:"i"}},
       sort:'-playTime.hours',
-      select:"username avatar playTime rank is_online",
-
     })
 
     return successHandler({

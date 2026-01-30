@@ -10,19 +10,20 @@ import { RoleEnum } from "../DB";
 
 export const authentication = (tokenType: TokenEnum = TokenEnum.access) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    let authHeader = req.headers.authorization;
 
-let authHeader = req.headers.authorization;
+    if (!authHeader) {
+        const tokenName = tokenType === TokenEnum.refresh ? "refresh_token" : "access_token";
+        const tokenInCookie = req.cookies[tokenName];
+        
+        if (tokenInCookie) {
+          const sigLevel = req.cookies.signature_level || SignatureEnumLevels.Bearer;
+          authHeader = `${sigLevel} ${tokenInCookie}`;
+        }
+      }
 
-    // لو مفيش Header، هندور في الكوكيز
-    if (!authHeader && req.cookies.access_token) {
-      // 💡 الحل هنا: بنجيب ليفل التوقيع من كوكي تانية انت بتسيفها وقت اللوجين
-      // أو بنخليها Bearer كديفولت لو مش مبعوتة
-      const sigLevel = req.cookies.signature_level || SignatureEnumLevels.Bearer;
-      authHeader = `${sigLevel} ${req.cookies.access_token}`;
-    }
-
-    if (!authHeader) throw new BadRequestError("Authorization validation error");
-
+    if (!authHeader)
+      throw new BadRequestError("Authorization validation error");
 
     const { user, decode } = await decodeToken({
       authorization: authHeader,
@@ -38,7 +39,8 @@ let authHeader = req.headers.authorization;
 
 export const authorization = (roles: RoleEnum[] = []) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.headers.authorization) throw new BadRequestError("Authorization validation error");
+    if (!req.headers.authorization)
+      throw new BadRequestError("Authorization validation error");
 
     const { user, decode } = await decodeToken({
       authorization: req.headers.authorization,

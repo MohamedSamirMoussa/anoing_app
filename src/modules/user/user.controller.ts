@@ -24,7 +24,7 @@ router.post("/login", validation(validators.login), userServices.login);
 router.post("/google-login", userServices.loginWithGoogle);
 router.get("/discord", userServices.discordRedirect);
 router.get("/discord/callback", userServices.discordLogin);
-
+router.get('/getToken' , authentication() , authorization(endpoint.token) , userServices.getToken)
 router.post("/forget-password", userServices.forgetPassword);
 router.post("/reset-password", userServices.resetPassword);
 router.post("/confirm-password", userServices.confirmPasswordOtp);

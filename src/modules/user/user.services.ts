@@ -20,6 +20,7 @@ import {
   generateOtp,
   hashed,
   IsAlreadyExist,
+  NotAuthorizedError,
   NotFoundError,
   SubjectEnum,
   successHandler,
@@ -135,7 +136,7 @@ class UserServices {
       await user.save();
       return successHandler({ res, status: 200, message: "Email confirmed" });
     } catch (error) {
-    return  next(error);
+      return next(error);
     }
   };
 
@@ -168,7 +169,7 @@ class UserServices {
       await user.save();
       return successHandler({ res, message: "OTP resent successfully" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -194,7 +195,7 @@ class UserServices {
       await this.handleLoginSuccess(res, user as HUserDoc);
       return successHandler({ res, status: 202, message: "Login successful" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -207,7 +208,7 @@ class UserServices {
       const { token } = req.body;
       const { name, email } = await verifyGoogleToken(token);
 
-      if(!name || !email) throw new BadRequestError("in-valid google token")
+      if (!name || !email) throw new BadRequestError("in-valid google token");
 
       let user: any = await this.userModel.findOne({
         filter: { email } as any,
@@ -236,14 +237,14 @@ class UserServices {
       await this.handleLoginSuccess(res, user as HUserDoc);
       return successHandler({ res, message: "Login with Google success" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
   discordRedirect = (req: Request, res: Response) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
     const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=https%3A%2F%2Fanoing-app.vercel.app%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
-    return successHandler({ res, result: {discordUrl} });
+    return successHandler({ res, result: { discordUrl } });
   };
 
   discordLogin = async (
@@ -301,7 +302,7 @@ class UserServices {
       await this.handleLoginSuccess(res, user as HUserDoc);
       res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -314,17 +315,42 @@ class UserServices {
       });
       return successHandler({ res, result: user as HUserDoc });
     } catch (error) {
-    return  next(error);
+      return next(error);
     }
   };
 
   refreshToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { refresh_token } = req.cookies;
+
+      if (!refresh_token) {
+        throw new NotAuthorizedError("Session expired, please login again");
+      }
+
       const credentials = await createLoginCredentials(req.user as HUserDoc);
+      await this.handleLoginSuccess(res , req.user as HUserDoc)
       await createRevokeToken(req.decode as JwtPayload);
-      return successHandler({ res, status: 201, result: credentials });
+
+      return successHandler({
+        res,
+        status: 201,
+        result: credentials,
+      });
     } catch (error) {
-    return  next(error);
+      return next(error);
+    }
+  };
+
+  getToken = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { access_token, refresh_token } = req.cookies;
+
+      if ((!access_token || !refresh_token))
+        throw new ConflictError("no tokens found");
+
+      return successHandler({ res, result: { access_token, refresh_token } });
+    } catch (error) {
+      return next(error);
     }
   };
 
@@ -346,7 +372,7 @@ class UserServices {
       await user.save();
       return successHandler({ res, message: "OTP sent" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -369,7 +395,7 @@ class UserServices {
       await user.save();
       return successHandler({ res, message: "Reset password confirmed" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -388,7 +414,7 @@ class UserServices {
       await user.save();
       return successHandler({ res, message: "Password Changed" });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -398,7 +424,7 @@ class UserServices {
       const gameUsers = await this.leaderboardModel.find({ filter: {} as any });
       return successHandler({ res, result: { webUsers, gameUsers } });
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   };
 
@@ -415,7 +441,7 @@ class UserServices {
       });
       return successHandler({ res });
     } catch (error) {
-    return  next(error);
+      return next(error);
     }
   };
 }

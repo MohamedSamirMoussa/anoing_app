@@ -36,7 +36,7 @@ const bootstrap = async (app: Express): Promise<void> => {
       message: { error: "Too many requests, please try again later" },
     }),
   );
-
+app.use(cookieParser())
   app.use(express.json({ limit: "10kb" }));
 
   await DBconnection();

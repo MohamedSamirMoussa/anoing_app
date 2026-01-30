@@ -25,7 +25,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use(cookieParser());
   app.use(
     cors({
-      origin: process.env.REDIRECT_URL,
+      origin: process.env.REDIRECT_URL || "https://anoing-front-end-app.vercel.app/",
       credentials: true,
     }),
   );

@@ -9,6 +9,7 @@ export const router:Router = Router({
 
 
 router.get('/' , leaderboardServices.getLeaderBoard)
+router.get('/search' , leaderboardServices.searchPlayers)
 
 
 

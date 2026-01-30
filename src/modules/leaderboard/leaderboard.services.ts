@@ -94,6 +94,39 @@ class LeaderboardServices {
       next(error);
     }
   };
+
+  searchPlayers = async (req:Request , res:Response,next:NextFunction)=>{
+    try {
+      const {username , serverName} = req.query
+
+      if (!username) {
+      throw new BadRequestError("Please provide a username to search");
+    }
+
+    const filter: any = {
+      username: { $regex: username, $options: "i" },
+    };
+
+    if (serverName) {
+      filter.serverName = serverName;
+    }
+
+    const searchResult = await this.leaderboardModel.find({
+      filter:{username:{$regex:username,$options:"i"}},
+      sort:'-playTime.hours',
+      select:"username avatar playTime rank is_online",
+
+    })
+
+    return successHandler({
+      res,
+      result:{searchResult}
+    })
+
+    } catch (error) {
+      return next(error)
+    }
+  }
 }
 
 export default new LeaderboardServices();

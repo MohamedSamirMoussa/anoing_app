@@ -300,7 +300,7 @@ class UserServices {
       }
 
       await this.handleLoginSuccess(res, user as HUserDoc);
-      res.redirect(process.env.FRONTEND_URL || "http://localhost:3000");
+      res.redirect(process.env.REDIRECT_URL || "http://localhost:3000");
     } catch (error) {
       return next(error);
     }

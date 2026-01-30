@@ -97,7 +97,7 @@ class LeaderboardServices {
 
   searchPlayers = async (req:Request , res:Response,next:NextFunction)=>{
     try {
-      const {username , serverName} = req.query
+      const {username } = req.query
 
       if (!username) {
       throw new BadRequestError("Please provide a username to search");
@@ -107,9 +107,6 @@ class LeaderboardServices {
       username: { $regex: username, $options: "i" },
     };
 
-    if (serverName) {
-      filter.serverName = serverName;
-    }
 
     const searchResult = await this.leaderboardModel.find({
       filter:{username:{$regex:username,$options:"i"}},

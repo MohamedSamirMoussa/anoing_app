@@ -39,10 +39,8 @@ export const validation = (schema: SchemaType) => {
         });
       }
 
-      if (issues.length > 0) {
-      
-      const message = issues.map(i => i.issues[0].message).join(", ");
-      throw new BadRequestError(message); 
+      if (issues.length) {
+      throw new BadRequestError("Validation Error : ", issues);
     }
     }
 

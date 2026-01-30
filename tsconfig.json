@@ -9,7 +9,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "commonjs",
-    "target": "esnext",
+    "target": "es2023",
     // For nodejs:
     // "lib": ["esnext"],
     "types": ["node"],
@@ -38,9 +38,9 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    // "verbatimModuleSyntax": false,
+    "verbatimModuleSyntax": false,
     "isolatedModules": true,
-    // "noUncheckedSideEffectImports": true,
+    "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
   }

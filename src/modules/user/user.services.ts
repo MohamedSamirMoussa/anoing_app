@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import {
   HUserDoc,
-  IUserSchema,
   LeaderboardModel,
   LeaderboardRepository,
   ProvidersEnum,
@@ -34,7 +33,6 @@ import {
   ResendOtpType,
 } from "./user.dto";
 import { LogoutEnum } from "../../middleware";
-import { UpdateQuery } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import axios from "axios";
 
@@ -209,6 +207,8 @@ class UserServices {
       const { token } = req.body;
       const { name, email } = await verifyGoogleToken(token);
 
+      if(!name || !email) throw new BadRequestError("in-valid google token")
+
       let user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },
@@ -243,7 +243,7 @@ class UserServices {
   discordRedirect = (req: Request, res: Response) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
     const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(process.env.DISCORD_REDIRECT_URI || "")}&scope=identify`;
-    return successHandler({ res, result: discordUrl });
+    return successHandler({ res, result: {discordUrl} });
   };
 
   discordLogin = async (
@@ -312,7 +312,7 @@ class UserServices {
         options: { lean: true },
         select: "username email role isLogged",
       });
-      return successHandler({ res, result: user });
+      return successHandler({ res, result: user as HUserDoc });
     } catch (error) {
     return  next(error);
     }

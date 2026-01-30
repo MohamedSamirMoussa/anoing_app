@@ -1,5 +1,5 @@
 import { model, models, Schema } from "mongoose";
-import type { HydratedDocument , Model } from "mongoose";
+import type { HydratedDocument, Model } from "mongoose";
 export enum GenderEnum {
   male = "male",
   female = "female",
@@ -22,7 +22,7 @@ export interface IUserSchema {
   password?: string;
   email?: string;
   resetpasswordOtp?: string;
-  confirmEmailOtp?: string ;
+  confirmEmailOtp?: string;
   gender: GenderEnum;
   role: RoleEnum;
   provider: ProvidersEnum;
@@ -122,4 +122,6 @@ const schema = new Schema<IUserSchema>(
 schema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
 schema.index({ googleId: 1 }, { sparse: true });
 schema.index({ discordId: 1 }, { sparse: true });
-export const UserModel: Model<IUserSchema> = (models.User as any) || model<IUserSchema>("User", schema);export type HUserDoc = HydratedDocument<IUserSchema>;
+export const UserModel: Model<IUserSchema> =
+  (models.User as any) || model<IUserSchema>("User", schema);
+export type HUserDoc = HydratedDocument<IUserSchema>;

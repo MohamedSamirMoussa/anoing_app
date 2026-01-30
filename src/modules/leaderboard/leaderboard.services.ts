@@ -63,7 +63,7 @@ class LeaderboardServices {
     next: NextFunction,
   ): Promise<Response | void> => {
     try {
-      const { serverName } = req.body;
+      const { serverName } = req.query;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 

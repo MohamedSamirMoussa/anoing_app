@@ -10,7 +10,9 @@ import express from "express";
 import { authController, blogRouter, leaderboardController } from "./modules";
 import cookieParser from "cookie-parser";
 import { donateController } from "./modules/donate";
-config({ path: resolve("./config/.env.development") });
+if (process.env.NODE_ENV !== "production") {
+  config({ path: resolve("./config/.env.development") });
+}
 const bootstrap = async (app: Express): Promise<void> => {
   const PORT: number = Number(process.env.PORT) || 3000;
 

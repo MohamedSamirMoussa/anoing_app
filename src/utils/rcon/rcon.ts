@@ -10,6 +10,7 @@ const upsertPlayer = async (
   username: string,
   isOnline: boolean,
   playTimeInSec: number,
+  serverName:string
 ): Promise<ILeaderboardUser> => {
   const playTime = {
     seconds: playTimeInSec,
@@ -18,11 +19,12 @@ const upsertPlayer = async (
   };
 
   const rank = getRank(playTime.hours);
-  let dbPlayer = await LeaderboardModel.findOne({ username:username } as any);
+let dbPlayer = await LeaderboardModel.findOne({ username, serverName } as any)
 
   if (!dbPlayer) {
     dbPlayer = new LeaderboardModel({
       username,
+      serverName,
       is_online: isOnline,
       playTime,
       // لو اللاعب داخل السيرفر دلوقتي يبقى ملوش آخر ظهور، لو مش موجود نسجله دلوقتي
@@ -48,6 +50,7 @@ const upsertPlayer = async (
   await dbPlayer.save();
 
   return {
+    serverName,
     username,
     avatar: `https://mc-heads.net/avatar/${username}/64`,
     is_online: isOnline,
@@ -69,14 +72,14 @@ const getRank = (hours: number) => {
   return { name: "Visitor" };
 };
 
-export const getConnectionWithServer = async (): Promise<{
+export const getConnectionWithServer = async (serverName:string): Promise<{
   sortedLeaderboard: ILeaderboardUser[];
   onlineCount: number;
 }> => {
 
   await DBconnection()
 
-  const rcon = await getRcon();
+  const rcon = await getRcon(serverName);
 
   try {
     const listRaw = await rcon.send("scoreboard players list");
@@ -103,7 +106,7 @@ export const getConnectionWithServer = async (): Promise<{
         );
         const playTimeInSec = parsePlayTime(playTimeRaw);
 
-        const player = await upsertPlayer(username, isOnline, playTimeInSec);
+        const player = await upsertPlayer(username, isOnline, playTimeInSec , serverName);
         const rank = getRank(player.playTime.hours);
         return { ...player, rank };
       }),
@@ -116,7 +119,7 @@ export const getConnectionWithServer = async (): Promise<{
 
     return { sortedLeaderboard, onlineCount };
   } catch (error) {
-    console.error("RCON connection failed:", error);
+    console.error(`RCON connection failed for ${serverName}:`, error);
     return { sortedLeaderboard: [], onlineCount: 0 };
   }
 };

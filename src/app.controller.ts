@@ -66,11 +66,11 @@ const bootstrap = async (app: Express): Promise<void> => {
 
   app.use(globalErrorHandling);
 
-  if (process.env.NODE_ENV !== "production") {
+  // if (process.env.NODE_ENV !== "production") {
     app.listen(PORT, () => {
       console.log(`Server is running on port ::: ${PORT}`);
     });
-  }
+  // }
 };
 
 export default bootstrap;

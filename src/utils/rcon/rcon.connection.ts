@@ -10,36 +10,71 @@ interface IRCONConfig {
   timeout: number;
 }
 
-const RCONconfig: IRCONConfig = {
-  host: process.env.RCON_HOST as string,
-  port: Number(process.env.RCON_PORT),
-  password: process.env.RCON_PASS as string,
-  timeout: Number(process.env.RCON_TIMEOUT),
+const serverConfigs: Record<string, IRCONConfig> = {
+  "atm 10": {
+    host: process.env.RCON_HOST as string,
+    port: Number(process.env.RCON_PORT_ATM),
+    password: process.env.RCON_PASS as string,
+    timeout:Number(process.env.RCON_TIMEOUT)
+  },
+  // "GTNH": {
+  //   host: process.env.RCON_HOST as string,
+  //   port: Number(process.env.RCON_PORT_GTNH),
+  //   password: process.env.RCON_PASS as string,
+  // },
+  // "Vanilla": {
+  //   host: process.env.RCON_HOST as string,
+  //   port: Number(process.env.RCON_PORT_VANILLA),
+  //   password: process.env.RCON_PASS as string,
+  // },
 };
 
-let rcon: Rcon | null = null;
-let isConnecting = false; // 🔴 CHANGED: Flag لمنع multiple connections
+const activeConnections: Record<string, Rcon | null> = {};
+const connectingFlags: Record<string, boolean> = {};
 
-export const getRcon = async (): Promise<Rcon> => {
-  if (rcon && rcon.authenticated) return rcon;
 
-  // 🔴 CHANGED: لو في محاولة اتصال شغالة، انتظر شويه
-  if (isConnecting) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return getRcon();
+
+
+export const getRcon = async (serverName:string): Promise<Rcon> => {
+  const RCONconfig =serverConfigs[serverName]
+
+if (!RCONconfig) {
+    throw new Error(`Server ${serverName} config not found!`);
   }
 
-  isConnecting = true;
+  if (activeConnections[serverName] && activeConnections[serverName]?.authenticated) {
+    return activeConnections[serverName]!;
+  }
+  if (connectingFlags[serverName]) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return getRcon(serverName);
+  }
+
+  connectingFlags[serverName] = true;
 
   try {
-    rcon = new Rcon(RCONconfig);
-    rcon.on("end", () => { rcon = null; console.log("RCON disconnected"); });
-    rcon.on("error", (err) => { rcon = null; console.error("RCON Error:", err); });
+    const rcon = new Rcon({
+        host: RCONconfig.host,
+        port: RCONconfig.port,
+        password: RCONconfig.password,
+    });
+
+    rcon.on("end", () => { 
+        activeConnections[serverName] = null; 
+        console.log(`RCON for ${serverName} disconnected`); 
+    });
     
+    rcon.on("error", (err) => { 
+        activeConnections[serverName] = null; 
+        console.error(`RCON Error for ${serverName}:`, err); 
+    });
+
     await rcon.connect();
-    console.log("RCON connected successfully");
+    console.log(`RCON connected to ${serverName} successfully`);
+    
+    activeConnections[serverName] = rcon;
     return rcon;
   } finally {
-    isConnecting = false;
+    connectingFlags[serverName] = false;
   }
 };

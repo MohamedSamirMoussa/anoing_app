@@ -92,6 +92,7 @@ export abstract class DBrepository<TDocument> {
   }
 
   async bulkWrite({ data, options }: { data: any[]; options?: any }) {
+    if (!data || data.length === 0) return;
     return await this.model.bulkWrite(data, options);
   }
 

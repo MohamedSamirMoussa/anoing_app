@@ -1,4 +1,3 @@
-import { SortOrder } from "mongoose";
 import {
   CreateOptions,
   DeleteResult,
@@ -100,17 +99,11 @@ export abstract class DBrepository<TDocument> {
   async find({
     filter = {},
     options,
-    sort = "",
-    select = "",
   }: {
     filter: any;
     options?: QueryOptions<TDocument>;
-    sort?: string | { [key: string]: SortOrder };
-    select?: string;
   }) {
     return await this.model
       .find(filter, undefined, options)
-      .sort(sort)
-      .select(select);
   }
 }

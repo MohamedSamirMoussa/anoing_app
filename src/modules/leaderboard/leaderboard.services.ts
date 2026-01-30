@@ -69,8 +69,9 @@ class LeaderboardServices {
 
       const skip = (page - 1) * limit;
 
-      const { sortedLeaderboard, onlineCount } =
-        await getConnectionWithServer(serverName as string);
+      const { sortedLeaderboard, onlineCount } = await getConnectionWithServer(
+        serverName as string,
+      );
 
       if (!sortedLeaderboard || sortedLeaderboard.length === 0)
         throw new BadRequestError("No leaderboard data found");
@@ -95,30 +96,26 @@ class LeaderboardServices {
     }
   };
 
-  searchPlayers = async (req:Request , res:Response,next:NextFunction)=>{
+  searchPlayers = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const {username } = req.query
+      const { username } = req.query;
 
       if (!username) {
-      throw new BadRequestError("Please provide a username to search");
-    }
+        throw new BadRequestError("Please provide a username to search");
+      }
 
+      const searchResult = await this.leaderboardModel.find({
+        filter: { username: { $regex: username, $options: "i" } },
+      })
 
-
-    const searchResult = await this.leaderboardModel.find({
-      filter:{username:{$regex:username,$options:"i"}},
-      sort:'-playTime.hours',
-    })
-
-    return successHandler({
-      res,
-      result:{searchResult}
-    })
-
+      return successHandler({
+        res,
+        result: { searchResult },
+      });
     } catch (error) {
-      return next(error)
+      return next(error);
     }
-  }
+  };
 }
 
 export default new LeaderboardServices();

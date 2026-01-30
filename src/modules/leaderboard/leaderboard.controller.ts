@@ -8,7 +8,7 @@ export const router:Router = Router({
 
 
 
-router.get('/' , leaderboardServices.getLeaderBoard)
+router.get('/' , leaderboardServices.getLeaderBoardAtm10)
 
 
 

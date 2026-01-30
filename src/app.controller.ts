@@ -25,7 +25,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use(cookieParser());
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: process.env.REDIRECT_URL,
       credentials: true,
     }),
   );

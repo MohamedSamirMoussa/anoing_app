@@ -83,10 +83,9 @@ class LeaderboardServices {
           leaderboard: sortedLeaderboard || users,
           onlineCount,
           pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(sortedLeaderboard.length / limit),
+
             totalItems: sortedLeaderboard.length,
-            limit,
+
           },
         },
       });

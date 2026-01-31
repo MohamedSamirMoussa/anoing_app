@@ -57,71 +57,84 @@ class LeaderboardServices {
     update();
   }
 
-  getLeaderBoard = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<Response | void> => {
-    try {
-      const serverName = (req.query.serverName as string) || "atm 10";
-      const page = parseInt(req.query.page as string);
-      const limit = parseInt(req.query.limit as string);
-      const skip = (page - 1) * limit;
+getLeaderBoard = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<Response | void> => {
+  try {
+    const serverName = (req.query.serverName as string) || "atm 10";
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit as string) || 10);
+    const skip = (page - 1) * limit;
 
-      let sourceData: ILeaderboardUser[] = await this.leaderboardModel.find({
-        filter: { serverName },
-        options: { sort: { "playTime.hours": -1 }, lean: true },
-      });
+    // 1. استخدم any[] أو واجهة (Interface) لا ترث من Mongoose Document
+    // لأن استخدام lean: true يحول الداتا لكائنات عادية
+    let sourceData: any[] = await this.leaderboardModel.find({
+      filter: { serverName },
+      options: { sort: { "playTime.hours": -1 }, lean: true },
+    });
 
-      let onlineCount = 0;
+    let onlineCount = 0;
 
-      if (sourceData.length === 0) {
-        console.log("DB is empty, fetching from Server...");
+    // 2. التحقق من البيانات والجلب من السيرفر إذا لزم الأمر
+    if (!sourceData || sourceData.length === 0) {
+      try {
         const response = await getConnectionWithServer(serverName);
         sourceData = response?.sortedLeaderboard || [];
         onlineCount = response?.onlineCount || 0;
-      } else {
-        try {
-          const fastCheck = (await Promise.race([
-            getConnectionWithServer(serverName),
-            new Promise((_, reject) => setTimeout(() => reject(), 1500)),
-          ])) as any;
-          onlineCount = fastCheck?.onlineCount || 0;
-
-          const onlineUsers = fastCheck?.sortedLeaderboard
-            ?.filter((u: any) => u.is_online)
-            .map((u: any) => u.username);
-          sourceData = sourceData.map((user) => ({
-            ...user,
-            is_online: onlineUsers?.includes(user.username) || false,
-          }));
-        } catch (e) {
-          sourceData = sourceData.map((user) => ({
-            ...user,
-            is_online: user.is_online || false,
-          }));
-        }
+      } catch (err) {
+        sourceData = []; // نضمن أنها مصفوفة فارغة في حالة الفشل التام
       }
+    } else {
+      // 3. تحديث حالة الـ Online
+      try {
+        const fastCheck = (await Promise.race([
+          getConnectionWithServer(serverName),
+          new Promise((_, reject) => setTimeout(() => reject(), 1500)),
+        ])) as any;
 
-      const paginatedData = sourceData.slice(skip, skip + limit);
+        onlineCount = fastCheck?.onlineCount || 0;
+        const onlineUsers = new Set(
+          fastCheck?.sortedLeaderboard
+            ?.filter((u: any) => u.is_online)
+            .map((u: any) => u.username)
+        );
 
-      return successHandler({
-        res,
-        result: {
-          leaderboard: paginatedData,
-          onlineCount,
-          pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(sourceData.length / limit) || 0,
-            totalItems: sourceData.length,
-            limit,
-          },
-        },
-      });
-    } catch (error) {
-      next(error);
+        sourceData = sourceData.map((user) => ({
+          ...user,
+          is_online: onlineUsers.has(user.username),
+        }));
+      } catch (e) {
+        // في حالة الـ Timeout، نترك الداتا كما هي مع ضمان وجود الحقل
+        sourceData = sourceData.map((user) => ({
+          ...user,
+          is_online: user.is_online || false,
+        }));
+      }
     }
-  };
+
+    // 4. الـ Pagination الآمن
+    const totalItems = sourceData.length;
+    const paginatedData = sourceData.slice(skip, skip + limit);
+
+    return successHandler({
+      res,
+      result: {
+        leaderboard: paginatedData, // سيرجع مصفوفة فارغة [] إذا لم تكن هناك بيانات
+        onlineCount,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(totalItems / limit) || 0,
+          totalItems: totalItems,
+          limit,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
   searchPlayers = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { username } = req.query;

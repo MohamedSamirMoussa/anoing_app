@@ -57,67 +57,67 @@ class LeaderboardServices {
     update();
   }
 
- getLeaderBoard = async (req: Request, res: Response, next: NextFunction):Promise<Response | void> => {
-  try {
-    const serverName = (req.query.serverName as string) || "atm 10";
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+  getLeaderBoard = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<Response | void> => {
+    try {
+      const serverName = (req.query.serverName as string) || "atm 10";
+      const page = parseInt(req.query.page as string);
+      const limit = parseInt(req.query.limit as string);
+      const skip = (page - 1) * limit;
 
-    // 1. روح للـ Database الأول (سريعة جداً)
-    let sourceData = await this.leaderboardModel.find({
-      filter: { serverName },
-      options: { sort: { "playTime.hours": -1 } }
-    });
+      let sourceData = await this.leaderboardModel.find({
+        filter: { serverName },
+        options: { sort: { "playTime.hours": -1 } },
+      });
 
-    let onlineCount = 0;
+      let onlineCount = 0;
 
-    // 2. لو الـ Database فاضية تماماً (أول مرة تشغل السيستم مثلاً)
-    if (sourceData.length === 0) {
-      console.log("DB is empty, fetching from Server...");
-      const response = await getConnectionWithServer(serverName);
-      sourceData = response?.sortedLeaderboard || [];
-      onlineCount = response?.onlineCount || 0;
-    } else {
-      // 3. اختياري: لو الداتا موجودة، حاول تجيب الـ Online Count فقط في "خلفية" الطلب
-      // عشان الـ UI يبان فيه مين أونلاين فعلياً
-      try {
-        const fastCheck = await Promise.race([
-          getConnectionWithServer(serverName),
-          new Promise((_, reject) => setTimeout(() => reject(), 1500)) // 1.5 ثانية بالظبط
-        ]) as any;
-        onlineCount = fastCheck?.onlineCount || 0;
-        
-        // تحديث حالة الـ Online للأشخاص في الـ sourceData بناءً على الرد اللحظي
-        const onlineUsers = fastCheck?.sortedLeaderboard?.filter((u: any) => u.is_online).map((u: any) => u.username);
-        sourceData = sourceData.map(user => ({
-          ...user,
-          is_online: onlineUsers?.includes(user.username) || false
-        }));
-      } catch (e) {
-        // لو السيرفر Offline، كمل بالبيانات اللي في الـ DB عادي جداً
+      if (sourceData.length === 0) {
+        console.log("DB is empty, fetching from Server...");
+        const response = await getConnectionWithServer(serverName);
+        sourceData = response?.sortedLeaderboard || [];
+        onlineCount = response?.onlineCount || 0;
+      } else {
+        try {
+          const fastCheck = (await Promise.race([
+            getConnectionWithServer(serverName),
+            new Promise((_, reject) => setTimeout(() => reject(), 1500)), // 1.5 ثانية بالظبط
+          ])) as any;
+          onlineCount = fastCheck?.onlineCount || 0;
+
+          const onlineUsers = fastCheck?.sortedLeaderboard
+            ?.filter((u: any) => u.is_online)
+            .map((u: any) => u.username);
+          sourceData = sourceData.map((user) => ({
+            ...user,
+            is_online: onlineUsers?.includes(user.username) || false,
+          }));
+        } catch (e) {
+        }
       }
-    }
 
-    const paginatedData = sourceData.slice(skip, skip + limit);
+      const paginatedData = sourceData.slice(skip, skip + limit);
 
-    return successHandler({
-      res,
-      result: {
-        leaderboard: paginatedData,
-        onlineCount,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(sourceData.length / limit) || 0,
-          totalItems: sourceData.length,
-          limit,
+      return successHandler({
+        res,
+        result: {
+          leaderboard: paginatedData,
+          onlineCount,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(sourceData.length / limit) || 0,
+            totalItems: sourceData.length,
+            limit,
+          },
         },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
   searchPlayers = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { username } = req.query;

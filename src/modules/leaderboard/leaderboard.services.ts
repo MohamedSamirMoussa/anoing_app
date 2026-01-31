@@ -19,7 +19,7 @@ class LeaderboardServices {
   ) {
     if (this.isAutoUpdating) return;
     this.isAutoUpdating = true;
-    const servers = ["atm 10"];
+    const servers = ["AllTheMons" , "atm 10"];
     const update = async () => {
       try {
         for (const serverName of servers) {

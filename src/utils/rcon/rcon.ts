@@ -10,7 +10,7 @@ const upsertPlayer = async (
   username: string,
   isOnline: boolean,
   playTimeInSec: number,
-  serverName:string
+  serverName: string,
 ): Promise<ILeaderboardUser> => {
   const playTime = {
     seconds: playTimeInSec,
@@ -19,7 +19,10 @@ const upsertPlayer = async (
   };
 
   const rank = getRank(playTime.hours);
-let dbPlayer = await LeaderboardModel.findOne({ username, serverName } as any)
+  let dbPlayer = await LeaderboardModel.findOne({
+    username,
+    serverName,
+  } as any);
 
   if (!dbPlayer) {
     dbPlayer = new LeaderboardModel({
@@ -27,19 +30,14 @@ let dbPlayer = await LeaderboardModel.findOne({ username, serverName } as any)
       serverName,
       is_online: isOnline,
       playTime,
-      // لو اللاعب داخل السيرفر دلوقتي يبقى ملوش آخر ظهور، لو مش موجود نسجله دلوقتي
-      lastSeen: isOnline ? null : new Date(), 
+      lastSeen: isOnline ? null : new Date(),
       rank,
     });
   } else {
-    // 💡 اللوجيك المهم هنا:
-    // لو اللاعب كان مسجل عندنا إنه أونلاين، والآن أصبح أوفلاين، نحدث تاريخ آخر ظهور
     if (dbPlayer.is_online && !isOnline) {
       dbPlayer.lastSeen = new Date();
-    } 
-    // لو اللاعب رجع أونلاين، ممكن تصفر الـ lastSeen أو تسيبه زي ما هو حسب رغبتك
-    else if (isOnline) {
-      dbPlayer.lastSeen = null; 
+    } else if (isOnline) {
+      dbPlayer.lastSeen = null;
     }
 
     dbPlayer.is_online = isOnline;
@@ -72,12 +70,13 @@ const getRank = (hours: number) => {
   return { name: "Visitor" };
 };
 
-export const getConnectionWithServer = async (serverName:string): Promise<{
+export const getConnectionWithServer = async (
+  serverName: string,
+): Promise<{
   sortedLeaderboard: ILeaderboardUser[];
   onlineCount: number;
 }> => {
-
-  await DBconnection()
+  await DBconnection();
 
   const rcon = await getRcon(serverName);
 
@@ -106,7 +105,12 @@ export const getConnectionWithServer = async (serverName:string): Promise<{
         );
         const playTimeInSec = parsePlayTime(playTimeRaw);
 
-        const player = await upsertPlayer(username, isOnline, playTimeInSec , serverName);
+        const player = await upsertPlayer(
+          username,
+          isOnline,
+          playTimeInSec,
+          serverName,
+        );
         const rank = getRank(player.playTime.hours);
         return { ...player, rank };
       }),

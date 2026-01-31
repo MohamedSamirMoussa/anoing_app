@@ -179,6 +179,8 @@ class UserServices {
     next: NextFunction,
   ): Promise<Response | void> => {
     try {
+      console.log(1);
+      
       const { email, password }: LoginType = req.body;
       const user: any = await this.userModel.findOneAndUpdate({
         filter: { email } as any,

@@ -11,22 +11,24 @@ interface IRCONConfig {
 }
 
 const serverConfigs: Record<string, IRCONConfig> = {
-  "atm 10": {
+  // "atm 10": {
+  //   host: process.env.RCON_HOST as string,
+  //   port: Number(process.env.RCON_PORT_ATM),
+  //   password: process.env.RCON_PASS as string,
+  //   timeout:Number(process.env.RCON_TIMEOUT)
+  // },
+  "AllTheMons": {
     host: process.env.RCON_HOST as string,
-    port: Number(process.env.RCON_PORT_ATM),
+    port: Number(process.env.RCON_PORT_ALL_THE_MOON),
     password: process.env.RCON_PASS as string,
     timeout:Number(process.env.RCON_TIMEOUT)
   },
-  // "GTNH": {
-  //   host: process.env.RCON_HOST as string,
-  //   port: Number(process.env.RCON_PORT_GTNH),
-  //   password: process.env.RCON_PASS as string,
-  // },
-  // "Vanilla": {
-  //   host: process.env.RCON_HOST as string,
-  //   port: Number(process.env.RCON_PORT_VANILLA),
-  //   password: process.env.RCON_PASS as string,
-  // },
+  // // "SB4": {
+  // //   host: process.env.RCON_HOST as string,
+  // //   port: Number(process.env.RCON_PORT_SB4),
+  // //   password: process.env.RCON_PASS as string,
+  // //   timeout:Number(process.env.RCON_TIMEOUT)
+  // // },
 };
 
 const activeConnections: Record<string, Rcon | null> = {};
@@ -37,6 +39,7 @@ const connectingFlags: Record<string, boolean> = {};
 
 export const getRcon = async (serverName:string): Promise<Rcon> => {
   const RCONconfig =serverConfigs[serverName]
+console.log(RCONconfig);
 
 if (!RCONconfig) {
     throw new Error(`Server ${serverName} config not found!`);

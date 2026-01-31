@@ -39,7 +39,6 @@ const connectingFlags: Record<string, boolean> = {};
 
 export const getRcon = async (serverName:string): Promise<Rcon> => {
   const RCONconfig =serverConfigs[serverName]
-console.log(RCONconfig);
 
 if (!RCONconfig) {
     throw new Error(`Server ${serverName} config not found!`);

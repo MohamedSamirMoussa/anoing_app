@@ -11,12 +11,12 @@ interface IRCONConfig {
 }
 
 const serverConfigs: Record<string, IRCONConfig> = {
-  // "atm 10": {
-  //   host: process.env.RCON_HOST as string,
-  //   port: Number(process.env.RCON_PORT_ATM),
-  //   password: process.env.RCON_PASS as string,
-  //   timeout:Number(process.env.RCON_TIMEOUT)
-  // },
+  "atm 10": {
+    host: process.env.RCON_HOST as string,
+    port: Number(process.env.RCON_PORT_ATM),
+    password: process.env.RCON_PASS as string,
+    timeout:Number(process.env.RCON_TIMEOUT)
+  },
   "AllTheMons": {
     host: process.env.RCON_HOST as string,
     port: Number(process.env.RCON_PORT_ALL_THE_MOON),

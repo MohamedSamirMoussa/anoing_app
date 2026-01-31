@@ -68,9 +68,9 @@ class LeaderboardServices {
   ): Promise<Response | void> => {
     try {
       const serverName = (req.query.serverName as string) || "atm 10";
-      const page = parseInt(req.query.page as string);
-      const limit = parseInt(req.query.limit as string);
-      const skip = (page - 1) * limit;
+      // const page = parseInt(req.query.page as string);
+      // const limit = parseInt(req.query.limit as string);
+      // const skip = (page - 1) * limit;
 
       let sourceData: ILeaderboardUser[] = await this.leaderboardModel.find({
         filter: { serverName },
@@ -110,10 +110,10 @@ class LeaderboardServices {
           leaderboard: paginatedData,
           onlineCount,
           pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(sourceData.length / limit) || 0,
+            // currentPage: page,
+            // totalPages: Math.ceil(sourceData.length / limit) || 0,
             totalItems: sourceData.length,
-            limit,
+            // limit,
           },
         },
       });

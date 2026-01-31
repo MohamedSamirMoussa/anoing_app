@@ -32,7 +32,6 @@ const upsertPlayer = async (
       playTime,
       lastSeen: isOnline ? null : new Date(),
       rank,
-      avatar: `https://mc-heads.net/avatar/${username}/64`,
     });
   } else {
     if (dbPlayer.is_online && !isOnline) {

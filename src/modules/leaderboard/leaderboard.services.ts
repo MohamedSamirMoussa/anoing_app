@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { ILeaderboardUser, LeaderboardModel, LeaderboardRepository } from "../../DB";
+import { LeaderboardModel, LeaderboardRepository } from "../../DB";
 import {
   BadRequestError,
   getConnectionWithServer,
@@ -57,76 +57,59 @@ class LeaderboardServices {
     update();
   }
 
-getLeaderBoard = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<Response | void> => {
+ getLeaderBoard = async (req: Request, res: Response, next: NextFunction):Promise<Response | void> => {
   try {
     const serverName = (req.query.serverName as string) || "atm 10";
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.max(1, parseInt(req.query.limit as string) || 10);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // 1. استخدم any[] أو واجهة (Interface) لا ترث من Mongoose Document
-    // لأن استخدام lean: true يحول الداتا لكائنات عادية
-    let sourceData: any[] = await this.leaderboardModel.find({
+    // 1. روح للـ Database الأول (سريعة جداً)
+    let sourceData = await this.leaderboardModel.find({
       filter: { serverName },
-      options: { sort: { "playTime.hours": -1 }, lean: true },
+      options: { sort: { "playTime.hours": -1 } }
     });
 
     let onlineCount = 0;
 
-    // 2. التحقق من البيانات والجلب من السيرفر إذا لزم الأمر
-    if (!sourceData || sourceData.length === 0) {
-      try {
-        const response = await getConnectionWithServer(serverName);
-        sourceData = response?.sortedLeaderboard || [];
-        onlineCount = response?.onlineCount || 0;
-      } catch (err) {
-        sourceData = []; // نضمن أنها مصفوفة فارغة في حالة الفشل التام
-      }
+    // 2. لو الـ Database فاضية تماماً (أول مرة تشغل السيستم مثلاً)
+    if (sourceData.length === 0) {
+      console.log("DB is empty, fetching from Server...");
+      const response = await getConnectionWithServer(serverName);
+      sourceData = response?.sortedLeaderboard || [];
+      onlineCount = response?.onlineCount || 0;
     } else {
-      // 3. تحديث حالة الـ Online
+      // 3. اختياري: لو الداتا موجودة، حاول تجيب الـ Online Count فقط في "خلفية" الطلب
+      // عشان الـ UI يبان فيه مين أونلاين فعلياً
       try {
-        const fastCheck = (await Promise.race([
+        const fastCheck = await Promise.race([
           getConnectionWithServer(serverName),
-          new Promise((_, reject) => setTimeout(() => reject(), 1500)),
-        ])) as any;
-
+          new Promise((_, reject) => setTimeout(() => reject(), 1500)) // 1.5 ثانية بالظبط
+        ]) as any;
         onlineCount = fastCheck?.onlineCount || 0;
-        const onlineUsers = new Set(
-          fastCheck?.sortedLeaderboard
-            ?.filter((u: any) => u.is_online)
-            .map((u: any) => u.username)
-        );
-
-        sourceData = sourceData.map((user) => ({
+        
+        // تحديث حالة الـ Online للأشخاص في الـ sourceData بناءً على الرد اللحظي
+        const onlineUsers = fastCheck?.sortedLeaderboard?.filter((u: any) => u.is_online).map((u: any) => u.username);
+        sourceData = sourceData.map(user => ({
           ...user,
-          is_online: onlineUsers.has(user.username),
+          is_online: onlineUsers?.includes(user.username) || false
         }));
       } catch (e) {
-        // في حالة الـ Timeout، نترك الداتا كما هي مع ضمان وجود الحقل
-        sourceData = sourceData.map((user) => ({
-          ...user,
-          is_online: user.is_online || false,
-        }));
+        // لو السيرفر Offline، كمل بالبيانات اللي في الـ DB عادي جداً
       }
     }
 
-    // 4. الـ Pagination الآمن
-    const totalItems = sourceData.length;
     const paginatedData = sourceData.slice(skip, skip + limit);
 
     return successHandler({
       res,
       result: {
-        leaderboard: paginatedData, // سيرجع مصفوفة فارغة [] إذا لم تكن هناك بيانات
+        leaderboard: paginatedData,
         onlineCount,
         pagination: {
           currentPage: page,
-          totalPages: Math.ceil(totalItems / limit) || 0,
-          totalItems: totalItems,
+          totalPages: Math.ceil(sourceData.length / limit) || 0,
+          totalItems: sourceData.length,
           limit,
         },
       },

@@ -1,5 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { LeaderboardModel, LeaderboardRepository } from "../../DB";
+import {
+  ILeaderboardUser,
+  LeaderboardModel,
+  LeaderboardRepository,
+} from "../../DB";
 import {
   BadRequestError,
   getConnectionWithServer,
@@ -68,7 +72,7 @@ class LeaderboardServices {
       const limit = parseInt(req.query.limit as string);
       const skip = (page - 1) * limit;
 
-      let sourceData = await this.leaderboardModel.find({
+      let sourceData: ILeaderboardUser[] = await this.leaderboardModel.find({
         filter: { serverName },
         options: { sort: { "playTime.hours": -1 } },
       });
@@ -95,8 +99,7 @@ class LeaderboardServices {
             ...user,
             is_online: onlineUsers?.includes(user.username) || false,
           }));
-        } catch (e) {
-        }
+        } catch (e) {}
       }
 
       const paginatedData = sourceData.slice(skip, skip + limit);

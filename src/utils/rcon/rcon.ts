@@ -143,7 +143,7 @@ export const getConnectionWithServer = async (
     const onlineCount = leaderboard.filter((p) => p.is_online).length;
 
     const sortedLeaderboard = leaderboard.sort(
-      (a, b) => b.playTime.seconds - a.playTime.seconds,
+      (a, b) => (b.playTime!.seconds!) - (a.playTime!.seconds!),
     );
 
     return { sortedLeaderboard, onlineCount };

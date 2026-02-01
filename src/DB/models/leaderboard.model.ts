@@ -2,10 +2,10 @@ import { HydratedDocument } from "mongoose";
 import { model, models, Schema } from "mongoose";
 export interface ILeaderboardUser {
   serverName: string;
-  online_count: number;
+  online_count?: number;
   username: string;
   is_online: boolean;
-  playTime: {
+  playTime?: {
     seconds: number;
     minutes: number;
     hours: number;
@@ -16,11 +16,11 @@ export interface ILeaderboardUser {
     hours: number;
   };
   lastSeen: Date;
-  avatar?: string;
+  avatar: string;
   rank: {
     name: string;
   };
-  joinTime: Date;
+  joinTime?: Date;
 }
 
 const schema = new Schema<ILeaderboardUser>(
@@ -30,12 +30,12 @@ const schema = new Schema<ILeaderboardUser>(
     username: { type: String },
     is_online: { type: Boolean, required: true },
     playTime: {
-      seconds: { type: Number, required: true },
-      minutes: { type: Number, required: true },
-      hours: { type: Number, required: true },
+      seconds: { type: Number},
+      minutes: { type: Number},
+      hours: { type: Number},
     },
     lastSeen: { type: Date, required: false, default: null },
-    avatar: { type: String, required: false },
+    avatar: { type: String },
     rank: {
       name: { type: String, required: true },
     },
@@ -51,6 +51,8 @@ const schema = new Schema<ILeaderboardUser>(
     timestamps: true,
   },
 );
+
+
 schema.index({ "playTime.seconds": -1 });
 
 export const LeaderboardModel =

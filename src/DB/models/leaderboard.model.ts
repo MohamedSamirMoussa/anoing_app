@@ -10,16 +10,22 @@ export interface ILeaderboardUser {
     minutes: number;
     hours: number;
   };
+  totalPlayTime: {
+    seconds: number;
+    minutes: number;
+    hours: number;
+  };
   lastSeen: Date;
   avatar?: string;
   rank: {
     name: string;
   };
+  joinTime: Date;
 }
 
 const schema = new Schema<ILeaderboardUser>(
   {
-    serverName: {type:String , required:true},
+    serverName: { type: String, required: true },
     online_count: Number,
     username: { type: String },
     is_online: { type: Boolean, required: true },
@@ -32,6 +38,13 @@ const schema = new Schema<ILeaderboardUser>(
     avatar: { type: String, required: false },
     rank: {
       name: { type: String, required: true },
+    },
+
+    joinTime: { type: Date, required: false, default: null },
+    totalPlayTime: {
+      seconds: { type: Number, default: 0 },
+      minutes: { type: Number, default: 0 },
+      hours: { type: Number, default: 0 },
     },
   },
   {

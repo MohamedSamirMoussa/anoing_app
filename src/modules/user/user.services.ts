@@ -182,6 +182,7 @@ class UserServices {
       console.log(1);
       
       const { email, password }: LoginType = req.body;
+      if(!email || !password) throw new BadRequestError("Email and password is required")
       const user: any = await this.userModel.findOneAndUpdate({
         filter: { email } as any,
         update: { isLogged: true } as any,

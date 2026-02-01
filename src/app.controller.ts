@@ -14,7 +14,7 @@ config({ path: resolve("./config/.env.development") });
 // }
 
 import { authController, blogRouter, leaderboardController } from "./modules";
-import { DBconnection, ILeaderboardUser, LeaderboardModel } from "./DB";
+import { DBconnection, LeaderboardModel } from "./DB";
 import { globalErrorHandling } from "./utils";
 import { donateController } from "./modules/donate";
 import { createServer } from "http";
@@ -68,19 +68,16 @@ const bootstrap = async (app: Express): Promise<void> => {
   const httpServer = createServer(app);
   const io = new SocketIoServer(httpServer, {
     cors: {
-      origin: "http://localhost:3000",
-      methods: ["GET", "POST"],
+      origin: process.env.FE_URI,
       credentials: true,
     },
   });
 
-  io.of("/leaderboard").on("connection", (socket) => {
+  io.on("connection", (socket) => {
     console.log("Client connected:", socket.id);
 
-    // Store which server each client wants
     const clientServers = new Map<string, string>();
 
-    // عندما يختار العميل سيرفر
     socket.on("select_server", async (serverName: string) => {
       console.log(`📡 Client ${socket.id} selected server: ${serverName}`);
       const normalizedServer = serverName.toLowerCase().trim();
@@ -109,10 +106,8 @@ const bootstrap = async (app: Express): Promise<void> => {
       }
     });
 
-    // تحديث دوري
     const interval = setInterval(async () => {
       try {
-        // لكل client مش متصل، أرسل بيانات السيرفر المختار
         for (const [clientId, serverName] of clientServers.entries()) {
           const socket = io.of("/leaderboard").sockets.get(clientId);
           if (socket && socket.connected) {

@@ -8,9 +8,9 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { Server as SocketIoServer } from "socket.io";
 if (process.env.NODE_ENV !== "production") {
-config({ path: resolve("./config/.env.development") });
+  config({ path: resolve("./config/.env.development") });
 } else {
-  config()
+  config();
 }
 
 import { authController, blogRouter, leaderboardController } from "./modules";
@@ -25,7 +25,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use(
     helmet(),
     cors({
-      origin: ["https://anoing-front-end-app.vercel.app/"],
+      origin: "http://localhost:3000",
       credentials: true,
     }),
     rateLimit({
@@ -68,10 +68,17 @@ const bootstrap = async (app: Express): Promise<void> => {
   const httpServer = createServer(app);
   const io = new SocketIoServer(httpServer, {
     cors: {
-      origin: "https://anoing-front-end-app.vercel.app/",
+      origin: [
+        "http://localhost:3000",
+        "https://anoing-app.vercel.app",
+        "https://*.vercel.app",
+      ],
       credentials: true,
-      transports: ['polling']
     },
+    transports: ["polling", "websocket"],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.on("connection", (socket) => {

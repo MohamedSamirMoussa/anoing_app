@@ -88,7 +88,6 @@ class UserServices {
             expiredOtpAt: new Date(Date.now() + 1 * 60 * 1000),
             expireAt: new Date(Date.now() + 30 * 60 * 1000),
             isLogged: false,
-            confirmedAt: new Date(),
           },
         ],
         options: { validateBeforeSave: true },

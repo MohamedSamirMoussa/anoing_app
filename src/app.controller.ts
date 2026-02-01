@@ -14,7 +14,7 @@ config({ path: resolve("./config/.env.development") });
 // }
 
 import { authController, blogRouter, leaderboardController } from "./modules";
-import { DBconnection, LeaderboardModel } from "./DB";
+import { DBconnection, ILeaderboardUser, LeaderboardModel } from "./DB";
 import { globalErrorHandling } from "./utils";
 import { donateController } from "./modules/donate";
 import { createServer } from "http";
@@ -77,25 +77,72 @@ const bootstrap = async (app: Express): Promise<void> => {
   io.of("/leaderboard").on("connection", (socket) => {
     console.log("Client connected:", socket.id);
 
-    const interval = setInterval(async () => {
+    // Store which server each client wants
+    const clientServers = new Map<string, string>();
+
+    // عندما يختار العميل سيرفر
+    socket.on("select_server", async (serverName: string) => {
+      console.log(`📡 Client ${socket.id} selected server: ${serverName}`);
+      const normalizedServer = serverName.toLowerCase().trim();
+      clientServers.set(socket.id, normalizedServer);
+
       try {
-        const leaderboardData = await LeaderboardModel.find({} as any)
-          .sort({ totalPlayTime: -1 })
+        const leaderboardData = await LeaderboardModel.find({
+          serverName: normalizedServer,
+        } as any)
+          .sort({ "playTime.seconds": -1 })
           .lean()
           .exec();
-        // const onlineCount = await LeaderboardModel.countDocuments({is_online:true})
+
+        const onlineCount = await LeaderboardModel.countDocuments({
+          serverName: normalizedServer,
+          is_online: true,
+        } as any);
 
         socket.emit("leaderboard_update", {
+          server: normalizedServer,
           leaderboard: leaderboardData,
-          // onlineCount,
+          onlineCount,
         });
       } catch (err) {
-        console.error("Error fetching leaderboard:", err);
+        console.error("Error:", err);
+      }
+    });
+
+    // تحديث دوري
+    const interval = setInterval(async () => {
+      try {
+        // لكل client مش متصل، أرسل بيانات السيرفر المختار
+        for (const [clientId, serverName] of clientServers.entries()) {
+          const socket = io.of("/leaderboard").sockets.get(clientId);
+          if (socket && socket.connected) {
+            const leaderboardData = await LeaderboardModel.find({
+              serverName: serverName,
+            } as any)
+              .sort({ "playTime.seconds": -1 })
+              .lean()
+              .exec();
+
+            const onlineCount = await LeaderboardModel.countDocuments({
+              serverName: serverName,
+              is_online: true,
+            } as any);
+
+            socket.emit("leaderboard_update", {
+              server: serverName,
+              leaderboard: leaderboardData,
+              onlineCount,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error in interval:", err);
       }
     }, 10000);
 
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
+      clientServers.delete(socket.id);
       clearInterval(interval);
     });
   });

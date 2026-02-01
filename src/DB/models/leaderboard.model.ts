@@ -20,7 +20,7 @@ export interface ILeaderboardUser {
   rank: {
     name: string;
   };
-  joinTime?: Date;
+  joinTime: Date;
 }
 
 const schema = new Schema<ILeaderboardUser>(

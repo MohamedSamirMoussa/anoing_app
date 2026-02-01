@@ -1,12 +1,10 @@
 import { AnyBulkWriteOperation } from "mongoose";
 import {
   HLeaderboardDoc,
-  ILeaderboardUser,
   LeaderboardModel,
   LeaderboardRepository,
 } from "../DB";
 import { getConnectionWithServer } from "../utils";
-import { getRcon } from "./../utils/rcon/rcon.connection";
 
 class StartLeaderboardAutoUpdate {
   private leaderboardModel = new LeaderboardRepository(LeaderboardModel);
@@ -47,7 +45,6 @@ class StartLeaderboardAutoUpdate {
           if (sortedLeaderboard && Array.isArray(sortedLeaderboard)) {
             const bulkData: AnyBulkWriteOperation<HLeaderboardDoc>[] =
               Array.from(sortedLeaderboard.values()).map((user) => {
-                  console.log("user:::::::::",{user});
                 return {
                     
                   updateOne: {

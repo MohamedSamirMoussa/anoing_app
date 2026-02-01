@@ -13,7 +13,6 @@ getLeaderBoard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { serverName } = req.query;
 
-    // جيب كل اللاعبين من DB مباشرة
     const users = await this.leaderboardModel.find({
       filter: { serverName },
     });

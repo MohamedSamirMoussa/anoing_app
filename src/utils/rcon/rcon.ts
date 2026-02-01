@@ -30,20 +30,27 @@ const upsertPlayer = async (
   serverName: string,
   rconPlayTimeSec = 0,
 ): Promise<ILeaderboardUser> => {
-  const filter = { username: username, servername: serverName };
+  const normalizedServerName = serverName.toLowerCase().trim();
+  const normalizedUsername = username.toLowerCase().trim();
+
+  const filter = {
+    username: normalizedUsername,
+    serverName: normalizedServerName,
+  };
   let dbPlayer = await LeaderboardModel.findOne(filter as any);
   const now = new Date();
   const playTimeParsed = ticksToTime(rconPlayTimeSec);
 
   if (!dbPlayer) {
     dbPlayer = new LeaderboardModel({
-      username,
-      serverName,
+      username:normalizedUsername,
+      serverName:normalizedServerName,
       is_online: isOnline,
       playTime: playTimeParsed,
       joinTime: isOnline ? now : null,
       lastSeen: isOnline ? null : now,
       rank: getRank(playTimeParsed.hours),
+      avatar: `https://mc-heads.net/avatar/${username}/64`,
     });
   } else {
     if (dbPlayer.is_online && !isOnline) {
@@ -143,7 +150,7 @@ export const getConnectionWithServer = async (
     const onlineCount = leaderboard.filter((p) => p.is_online).length;
 
     const sortedLeaderboard = leaderboard.sort(
-      (a, b) => (b.playTime!.seconds!) - (a.playTime!.seconds!),
+      (a, b) => b.playTime!.seconds! - a.playTime!.seconds!,
     );
 
     return { sortedLeaderboard, onlineCount };

@@ -70,6 +70,7 @@ const bootstrap = async (app: Express): Promise<void> => {
     cors: {
       origin: "https://anoing-front-end-app.vercel.app/",
       credentials: true,
+      transports: ['polling']
     },
   });
 

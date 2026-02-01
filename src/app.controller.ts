@@ -7,11 +7,11 @@ import { resolve } from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
 import { Server as SocketIoServer } from "socket.io";
-// if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production") {
 config({ path: resolve("./config/.env.development") });
-// } else {
-//   config()
-// }
+} else {
+  config()
+}
 
 import { authController, blogRouter, leaderboardController } from "./modules";
 import { DBconnection, LeaderboardModel } from "./DB";
@@ -25,7 +25,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use(
     helmet(),
     cors({
-      origin: true,
+      origin: ["https://anoing-front-end-app.vercel.app/"],
       credentials: true,
     }),
     rateLimit({
@@ -68,7 +68,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   const httpServer = createServer(app);
   const io = new SocketIoServer(httpServer, {
     cors: {
-      origin: process.env.FE_URI,
+      origin: "https://anoing-front-end-app.vercel.app/",
       credentials: true,
     },
   });
@@ -109,7 +109,7 @@ const bootstrap = async (app: Express): Promise<void> => {
     const interval = setInterval(async () => {
       try {
         for (const [clientId, serverName] of clientServers.entries()) {
-          const socket = io.of("/leaderboard").sockets.get(clientId);
+          const socket = io.sockets.sockets.get(clientId);
           if (socket && socket.connected) {
             const leaderboardData = await LeaderboardModel.find({
               serverName: serverName,

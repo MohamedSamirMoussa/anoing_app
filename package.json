@@ -4,7 +4,14 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "start:dev": "concurrently \"tsc --watch\" \"node --watch dist/index.js\""
+    "dev": "ts-node src/index.ts",
+    "start:dev": "concurrently \"tsc --watch\" \"node --watch dist/index.js\"",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "build:prod": "npm ci --only=production && npm run build",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
   },
   "keywords": [],
   "author": "",
@@ -52,6 +59,11 @@
     "@types/nodemailer": "^7.0.5",
     "@types/stripe": "^8.0.416",
     "@types/uuid": "^10.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "ts-node": "^10.9.0",
+    "nodemon": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

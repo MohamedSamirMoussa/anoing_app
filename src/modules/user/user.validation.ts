@@ -48,3 +48,9 @@ export const logout = {
     flag: generalFields.flag,
   }),
 };
+
+export const loginWithGoogle = {
+  body: z.strictObject({
+    token: z.string("Token is required"),
+  }),
+};

@@ -6,18 +6,16 @@ import { config } from "dotenv";
 import { resolve } from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
-import { Server as SocketIoServer } from "socket.io";
 if (process.env.NODE_ENV !== "production") {
   config({ path: resolve("./config/.env.development") });
 } else {
   config();
 }
 
-import { authController, blogRouter, leaderboardController } from "./modules";
-import { DBconnection, LeaderboardModel } from "./DB";
+import { authController, blogRouter, initIO, leaderboardController } from "./modules";
+import { DBconnection } from "./DB";
 import { globalErrorHandling } from "./utils";
 import { donateController } from "./modules/donate";
-import { createServer } from "http";
 import leaderboardAutoUpdate from "./update/leaderboard.update";
 const bootstrap = async (app: Express): Promise<void> => {
   const PORT: number = Number(process.env.PORT) || 3000;
@@ -65,94 +63,12 @@ const bootstrap = async (app: Express): Promise<void> => {
 
   app.use(globalErrorHandling);
 
-  const httpServer = createServer(app);
-  const io = new SocketIoServer(httpServer, {
-    cors: {
-      origin: [
-        "http://localhost:3000",
-        "https://anoing-app.vercel.app",
-        "https://*.vercel.app",
-      ],
-      credentials: true,
-    },
-    transports: ["polling", "websocket"],
-    allowEIO3: true,
-    pingTimeout: 60000,
-    pingInterval: 25000,
-  });
 
-  io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
-
-    const clientServers = new Map<string, string>();
-
-    socket.on("select_server", async (serverName: string) => {
-      console.log(`📡 Client ${socket.id} selected server: ${serverName}`);
-      const normalizedServer = serverName.toLowerCase().trim();
-      clientServers.set(socket.id, normalizedServer);
-
-      try {
-        const leaderboardData = await LeaderboardModel.find({
-          serverName: normalizedServer,
-        } as any)
-          .sort({ "playTime.seconds": -1 })
-          .lean()
-          .exec();
-
-        const onlineCount = await LeaderboardModel.countDocuments({
-          serverName: normalizedServer,
-          is_online: true,
-        } as any);
-
-        socket.emit("leaderboard_update", {
-          server: normalizedServer,
-          leaderboard: leaderboardData,
-          onlineCount,
-        });
-      } catch (err) {
-        console.error("Error:", err);
-      }
-    });
-
-    const interval = setInterval(async () => {
-      try {
-        for (const [clientId, serverName] of clientServers.entries()) {
-          const socket = io.sockets.sockets.get(clientId);
-          if (socket && socket.connected) {
-            const leaderboardData = await LeaderboardModel.find({
-              serverName: serverName,
-            } as any)
-              .sort({ "playTime.seconds": -1 })
-              .lean()
-              .exec();
-
-            const onlineCount = await LeaderboardModel.countDocuments({
-              serverName: serverName,
-              is_online: true,
-            } as any);
-
-            socket.emit("leaderboard_update", {
-              server: serverName,
-              leaderboard: leaderboardData,
-              onlineCount,
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Error in interval:", err);
-      }
-    }, 10000);
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-      clientServers.delete(socket.id);
-      clearInterval(interval);
-    });
-  });
-
-  httpServer.listen(PORT, () => {
+  const httpServer = app.listen(PORT, () => {
     console.log(`Server is running on port ::: ${PORT}`);
   });
+
+  initIO(httpServer)
 };
 
 export default bootstrap;

@@ -34,7 +34,7 @@ class BlogServices {
             {
               title,
               description,
-              blogId: req.user._id,
+              userId: req.user._id,
               image: { secure_url, public_id },
             },
           ],

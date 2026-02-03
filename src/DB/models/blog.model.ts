@@ -4,7 +4,7 @@ export interface IBlogSchema {
   title: string;
   description: string;
   image?: { secure_url: string; public_id: string };
-  blogId?: Types.ObjectId;
+  userId?: Types.ObjectId;
 }
 
 const schema = new Schema<IBlogSchema>(
@@ -15,7 +15,7 @@ const schema = new Schema<IBlogSchema>(
       secure_url: String,
       public_id: String,
     },
-    blogId: {
+    userId: {
       type: Types.ObjectId,
       required: true,
       ref: "User",

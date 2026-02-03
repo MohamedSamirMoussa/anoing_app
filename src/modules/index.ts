@@ -4,3 +4,4 @@ export * from "./user/user.dto";
 export * from "./user/user.validation";
 export * from './leaderboard'
 export *from './blog'
+export * from './gateway'

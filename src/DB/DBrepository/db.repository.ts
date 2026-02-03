@@ -99,11 +99,12 @@ export abstract class DBrepository<TDocument> {
   async find({
     filter = {},
     options,
+    sort,
   }: {
     filter: any;
     options?: QueryOptions<TDocument>;
+    sort?: any;
   }) {
-    return await this.model
-      .find(filter, undefined, options)
+    return await this.model.find(filter, undefined, options).sort(sort);
   }
 }

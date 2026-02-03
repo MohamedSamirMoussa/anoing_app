@@ -10,11 +10,6 @@ export interface ILeaderboardUser {
     minutes: number;
     hours: number;
   };
-  totalPlayTime: {
-    seconds: number;
-    minutes: number;
-    hours: number;
-  };
   lastSeen: Date;
   avatar: string;
   rank: {
@@ -41,11 +36,6 @@ const schema = new Schema<ILeaderboardUser>(
     },
 
     joinTime: { type: Date, required: false, default: null },
-    totalPlayTime: {
-      seconds: { type: Number, default: 0 },
-      minutes: { type: Number, default: 0 },
-      hours: { type: Number, default: 0 },
-    },
   },
   {
     timestamps: true,

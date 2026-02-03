@@ -80,7 +80,6 @@ const upsertPlayer = async (
     avatar: `https://mc-heads.net/avatar/${username}/64`,
     is_online: isOnline,
     playTime: dbPlayer.playTime,
-    totalPlayTime: dbPlayer.playTime,
     lastSeen: dbPlayer.lastSeen,
     rank: dbPlayer.rank,
     online_count: isOnline ? 1 : 0,

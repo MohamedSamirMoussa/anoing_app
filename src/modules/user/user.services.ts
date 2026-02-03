@@ -29,6 +29,7 @@ import {
 import {
   ConfirmEmailType,
   LoginType,
+  LoginWithGoogleType,
   LogoutType,
   RegisterType,
   ResendOtpType,
@@ -36,11 +37,19 @@ import {
 import { LogoutEnum } from "../../middleware";
 import { JwtPayload } from "jsonwebtoken";
 import axios from "axios";
+import { customAlphabet } from "nanoid";
 
 class UserServices {
   private userModel = new UserRepository(UserModel);
   private leaderboardModel = new LeaderboardRepository(LeaderboardModel);
 
+  private alphabet =
+    "0123456789" +
+    "abcdefghijklmnopqrstuvwxyz" +
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+    "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+  protected generatePassword = customAlphabet(this.alphabet, 15);
   private async handleLoginSuccess(res: Response, user: HUserDoc) {
     const { access_token, refresh_token } = await createLoginCredentials(user);
     const signatureLevel = await detectSignature(user.role);
@@ -65,6 +74,12 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { username, email, password, gender }: RegisterType = req.body;
+
+      if (!username || !email || !password || !gender) {
+        throw new BadRequestError(
+          "Username , email , password and gender required",
+        );
+      }
 
       const isUserExist = await this.userModel.findOne({
         filter: { email } as any,
@@ -114,6 +129,7 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { email, otp }: ConfirmEmailType = req.body;
+      if (!email || !otp) throw new BadRequestError("Email and otp required");
       const user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },
@@ -129,7 +145,8 @@ class UserServices {
         await user.save();
         throw new BadRequestError("Invalid or Expired OTP");
       }
-
+      user.expiredAt = undefined;
+      user.expiredOtpAt = undefined;
       user.confirmedAt = new Date();
       user.confirmEmailOtp = undefined;
       await user.save();
@@ -146,6 +163,7 @@ class UserServices {
   ): Promise<Response | void> => {
     try {
       const { email }: ResendOtpType = req.body;
+      if (!email) throw new BadRequestError("Email is required");
       const user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },
@@ -178,10 +196,10 @@ class UserServices {
     next: NextFunction,
   ): Promise<Response | void> => {
     try {
-      console.log(1);
-      
       const { email, password }: LoginType = req.body;
-      if(!email || !password) throw new BadRequestError("Email and password is required")
+
+      if (!email || !password)
+        throw new BadRequestError("Email and password is required");
       const user: any = await this.userModel.findOneAndUpdate({
         filter: { email } as any,
         update: { isLogged: true } as any,
@@ -207,9 +225,9 @@ class UserServices {
     next: NextFunction,
   ): Promise<Response | void> => {
     try {
-      const { token } = req.body;
+      const { token }: LoginWithGoogleType = req.body;
+      if (!token) throw new BadRequestError("Invalid token");
       const { name, email } = await verifyGoogleToken(token);
-
       if (!name || !email) throw new BadRequestError("in-valid google token");
 
       let user: any = await this.userModel.findOne({
@@ -227,6 +245,7 @@ class UserServices {
               confirmedAt: new Date(),
               isLogged: true,
               role: RoleEnum.user as any,
+              password: await hashed(String(this.generatePassword())),
             },
           ],
         });
@@ -245,7 +264,8 @@ class UserServices {
 
   discordRedirect = (req: Request, res: Response) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
-    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=https%3A%2F%2Fanoing-app.vercel.app%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
+    // const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=https%3A%2F%2Fanoing-app.vercel.app%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
+    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
     return successHandler({ res, result: { discordUrl } });
   };
 
@@ -292,6 +312,7 @@ class UserServices {
               confirmedAt: new Date(),
               isLogged: true,
               role: RoleEnum.user as any,
+              password: await hashed(String(this.generatePassword())),
             },
           ],
         });
@@ -330,7 +351,7 @@ class UserServices {
       }
 
       const credentials = await createLoginCredentials(req.user as HUserDoc);
-      await this.handleLoginSuccess(res , req.user as HUserDoc)
+      await this.handleLoginSuccess(res, req.user as HUserDoc);
       await createRevokeToken(req.decode as JwtPayload);
 
       return successHandler({
@@ -347,7 +368,7 @@ class UserServices {
     try {
       const { access_token, refresh_token } = req.cookies;
 
-      if ((!access_token || !refresh_token))
+      if (!access_token || !refresh_token)
         throw new ConflictError("no tokens found");
 
       return successHandler({ res, result: { access_token, refresh_token } });

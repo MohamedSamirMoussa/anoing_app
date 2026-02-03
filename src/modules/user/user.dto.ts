@@ -7,3 +7,4 @@ export type ConfirmEmailType = z.infer<typeof validators.confirmEmail.body >
 export type LoginType = z.infer<typeof validators.login.body > 
 export type ResendOtpType = z.infer<typeof validators.resendOtp.body > 
 export type LogoutType = z.infer<typeof validators.logout.body > 
+export type LoginWithGoogleType = z.infer<typeof validators.loginWithGoogle.body > 

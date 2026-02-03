@@ -11,16 +11,15 @@ type ClientData = {
 const clientServers = new Map<string, ClientData>();
 
 export const initIO = (httpServer: HttpServer) => {
-  const io = new Server(httpServer, {
+const io = new Server(httpServer, {
     cors: {
-      origin: [
-        "http://localhost:3000",
-        "https://anoing-app.vercel.app",
-        "https://*.vercel.app",
-      ],
+      // Use the environment variable, fallback to localhost
+      origin: process.env.FE_URL || "http://localhost:3000",
+      methods: ["GET", "POST"],
       credentials: true,
     },
     transports: ["polling", "websocket"],
+    connectTimeout: 45000, 
     pingTimeout: 60000,
     pingInterval: 25000,
   });

@@ -1,5 +1,5 @@
 import { model, models, Schema } from "mongoose";
-import type { HydratedDocument, Model } from "mongoose";
+import { HydratedDocument, Model, Types } from "mongoose";
 export enum GenderEnum {
   male = "male",
   female = "female",
@@ -35,7 +35,7 @@ export interface IUserSchema {
   forgetPasswordOtp: string;
   forgetPasswordOtpExpireAt: Date;
   confirmForgetPasswordAt: Date;
-
+  blogId?: Types.ObjectId;
   googleId?: string;
   discordId?: string;
   avatar?: string;
@@ -79,6 +79,10 @@ const schema = new Schema<IUserSchema>(
       },
       enum: Object.values(GenderEnum),
       default: GenderEnum.male,
+    },
+    blogId: {
+      type: Types.ObjectId,
+      ref: "Blog",
     },
     changedCredentialsAt: Date,
     confirmedAt: Date,

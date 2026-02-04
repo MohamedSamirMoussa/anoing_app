@@ -15,7 +15,7 @@ class LeaderboardServices {
 
       const leaderboard = await this.leaderboardModel.find({
         filter: { serverName },
-        sort: { "playTime.seconds": -1 },
+        sort: { "playTime.seconds": -1, is_online: -1 },
       });
 
       return successHandler({

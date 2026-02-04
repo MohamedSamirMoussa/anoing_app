@@ -1,8 +1,6 @@
 import z from "zod";
 import { generalFields } from "../../middleware";
 
-
-
 export const register = {
   body: z
     .strictObject({
@@ -12,15 +10,10 @@ export const register = {
       confirmPassword: generalFields.confirmPassword,
       gender: generalFields.gender,
     })
-    .refine(
-      (value: any) => {
-        return value.confirmPassword === value.password;
-      },
-      {
-        path: ["confirm-password"],
-        error: "Confirm password doesn't matches with password",
-      },
-    ),
+    .refine((value: any) => value.confirmPassword === value.password, {
+      path: ["confirm-password"],
+      message: "Confirm password doesn't match with password",
+    }),
 };
 
 export const confirmEmail = {
@@ -50,7 +43,25 @@ export const logout = {
 };
 
 export const loginWithGoogle = {
-  body: z.strictObject({
+  body: z.object({
     token: z.string("Token is required"),
   }),
+};
+
+export const forgetPassword = {
+  body: z.strictObject({
+    email: generalFields.email,
+  }),
+};
+
+export const resetPassword = {
+  body: z
+    .strictObject({
+      email: generalFields.email,
+      newPassword: generalFields.password,
+    })
+    .refine((value: any) => value.confirmPassword === value.newPassword, {
+      path: ["confirm-password"],
+      message: "Confirm password doesn't match with password",
+    }),
 };

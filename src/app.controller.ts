@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== "production") {
   config();
 }
 
-import { authController, blogRouter, initIO, leaderboardController } from "./modules";
+import { authController, blogRouter, initIO, leaderboardController, settingRouter } from "./modules";
 import { DBconnection } from "./DB";
 import { globalErrorHandling } from "./utils";
 import { donateController } from "./modules/donate";
@@ -41,7 +41,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use("/api/v1/leaderboard", leaderboardController);
   app.use("/api/v1/blog", blogRouter);
   app.use("/api/v1/checkout", donateController);
-
+  app.use("/api/v1/components" , settingRouter)
   app.get("/health", (req, res) => {
     res.status(200).json({
       status: "ok",

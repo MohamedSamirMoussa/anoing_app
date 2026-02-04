@@ -28,11 +28,13 @@ import {
 } from "../../utils";
 import {
   ConfirmEmailType,
+  ForgetPasswordType,
   LoginType,
   LoginWithGoogleType,
   LogoutType,
   RegisterType,
   ResendOtpType,
+  ResetPasswordType,
 } from "./user.dto";
 import { LogoutEnum } from "../../middleware";
 import { JwtPayload } from "jsonwebtoken";
@@ -64,7 +66,42 @@ class UserServices {
     res.cookie("refresh_token", refresh_token, cookieOptions);
     res.cookie("signature_level", signatureLevel, cookieOptions);
   }
+  private async syncSocialUser(userData: {
+    email: string;
+    username: string;
+    provider: ProvidersEnum;
+    discordId?: string;
+    role?: RoleEnum;
+    password?: string;
+    confirmedAt?: Date;
+    isLogged?: boolean;
+  }) {
+    let user = await this.userModel.findOne({
+      filter: { email: userData.email } as any,
+    });
 
+    if (!user) {
+      const created =
+        (await this.userModel.create({
+          data: [
+            {
+              username: userData.username,
+              email: userData.email,
+              provider: userData.provider,
+              confirmedAt: new Date(),
+              isLogged: true,
+              password: await hashed(String(this.generatePassword())),
+              role: RoleEnum.user as RoleEnum,
+            },
+          ],
+        })) || [];
+      return created && created.length > 0 ? created[0] : null;
+    }
+    user.isLogged = true;
+    if (userData.discordId) user.discordId = userData.discordId;
+    await user.save();
+    return user;
+  }
   constructor() {}
 
   register = async (
@@ -80,7 +117,6 @@ class UserServices {
           "Username , email , password and gender required",
         );
       }
-
       const isUserExist = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: true },
@@ -118,6 +154,8 @@ class UserServices {
         message: "User registered successfully",
       });
     } catch (error) {
+      console.log(error);
+
       return next(error);
     }
   };
@@ -176,6 +214,7 @@ class UserServices {
           ? SubjectEnum.resetPassword
           : SubjectEnum.registration,
       });
+
       if (!user.confirmedAt) {
         user.confirmEmailOtp = encryption(otp);
         user.expiredOtpAt = new Date(Date.now() + 1 * 60 * 1000);
@@ -200,10 +239,9 @@ class UserServices {
 
       if (!email || !password)
         throw new BadRequestError("Email and password is required");
-      const user: any = await this.userModel.findOneAndUpdate({
-        filter: { email } as any,
-        update: { isLogged: true } as any,
-        options: { lean: true },
+      const user: any = await this.userModel.findOne({
+        filter: { email },
+        options: { lean: false },
       });
 
       if (!user) throw new NotFoundError("User not found");
@@ -211,7 +249,8 @@ class UserServices {
         throw new ConflictError("Please confirm your email first");
       if (user.password && !(await compareHash(password, user.password)))
         throw new BadRequestError("Invalid credentials");
-
+      user.isLogged = true;
+      await user.save();
       await this.handleLoginSuccess(res, user as HUserDoc);
       return successHandler({ res, status: 202, message: "Login successful" });
     } catch (error) {
@@ -230,30 +269,11 @@ class UserServices {
       const { name, email } = await verifyGoogleToken(token);
       if (!name || !email) throw new BadRequestError("in-valid google token");
 
-      let user: any = await this.userModel.findOne({
-        filter: { email } as any,
-        options: { lean: false },
+      let user: any = await this.syncSocialUser({
+        username: name,
+        email: email,
+        provider: ProvidersEnum.google as ProvidersEnum,
       });
-
-      if (!user) {
-        const created = await this.userModel.create({
-          data: [
-            {
-              username: name,
-              email,
-              provider: ProvidersEnum.google as any,
-              confirmedAt: new Date(),
-              isLogged: true,
-              role: RoleEnum.user as any,
-              password: await hashed(String(this.generatePassword())),
-            },
-          ],
-        });
-        user = created ? created[0] : null;
-      } else {
-        user.isLogged = true;
-        await user.save();
-      }
 
       await this.handleLoginSuccess(res, user as HUserDoc);
       return successHandler({ res, message: "Login with Google success" });
@@ -263,9 +283,7 @@ class UserServices {
   };
 
   discordRedirect = (req: Request, res: Response) => {
-    const clientId = process.env.DISCORD_CLIENT_ID;
-    // const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=https%3A%2F%2Fanoing-app.vercel.app%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
-    const discordUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fapi%2Fv1%2Fauth%2Fdiscord%2Fcallback&scope=identify`;
+    const discordUrl = process.env.DISCORD_URL_REDIRECT;
     return successHandler({ res, result: { discordUrl } });
   };
 
@@ -284,46 +302,34 @@ class UserServices {
         redirect_uri: process.env.DISCORD_REDIRECT_URI as string,
       });
 
-      const tokenRes = await axios.post(
-        "https://discord.com/api/oauth2/token",
-        params.toString(),
-        {
+      const tokenRes = await axios
+        .post("https://discord.com/api/oauth2/token", params.toString(), {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        },
-      );
+        })
+        .catch((err) => {
+          res.redirect(process.env.REDIRECT_URL as string);
+          throw new BadRequestError("Invalid discord token");
+        });
 
-      const userRes = await axios.get("https://discord.com/api/users/@me", {
-        headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
-      });
+      const userRes = await axios
+        .get("https://discord.com/api/users/@me", {
+          headers: { Authorization: `Bearer ${tokenRes.data.access_token}` },
+        })
+        .catch((err) => {
+          res.redirect(process.env.REDIRECT_URL as string);
+          throw new NotFoundError("User not found");
+        });
 
       const discordUser = userRes.data;
-      let user: any = await this.userModel.findOne({
-        filter: { discordId: discordUser.id } as any,
-        options: { lean: false },
+      const userEmail = discordUser.email || `${discordUser.id}@discord.user`;
+      let user: any = await this.syncSocialUser({
+        username: discordUser.username,
+        provider: ProvidersEnum.discord,
+        email: userEmail,
       });
 
-      if (!user) {
-        const created = await this.userModel.create({
-          data: [
-            {
-              username: discordUser.username,
-              discordId: discordUser.id,
-              provider: ProvidersEnum.discord as any,
-              confirmedAt: new Date(),
-              isLogged: true,
-              role: RoleEnum.user as any,
-              password: await hashed(String(this.generatePassword())),
-            },
-          ],
-        });
-        user = created ? created[0] : null;
-      } else {
-        user.isLogged = true;
-        await user.save();
-      }
-
       await this.handleLoginSuccess(res, user as HUserDoc);
-      res.redirect(process.env.REDIRECT_URL || "http://localhost:3000");
+      res.redirect(process.env.REDIRECT_URL as string);
     } catch (error) {
       return next(error);
     }
@@ -379,7 +385,8 @@ class UserServices {
 
   forgetPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email } = req.body;
+      const { email }: ForgetPasswordType = req.body;
+      if (!email) throw new BadRequestError("email is required");
       const user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },
@@ -405,7 +412,7 @@ class UserServices {
     next: NextFunction,
   ) => {
     try {
-      const { otp, email } = req.body;
+      const { otp, email }: ConfirmEmailType = req.body;
       const user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },
@@ -424,7 +431,7 @@ class UserServices {
 
   resetPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, newPassword } = req.body;
+      const { email, newPassword }: ResetPasswordType = req.body;
       const user: any = await this.userModel.findOne({
         filter: { email } as any,
         options: { lean: false },

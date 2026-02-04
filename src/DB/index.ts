@@ -8,3 +8,5 @@ export * from "./DBrepository/leaderboard.repository";
 export * from "./models/leaderboard.model";
 export * from './DBrepository/donate.repository'
 export * from './models/donate.model'
+export * from './models/app.model'
+export * from './DBrepository/dashboard.repository'

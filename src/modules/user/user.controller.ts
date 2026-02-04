@@ -21,7 +21,7 @@ router.post(
   userServices.confirmEmail,
 );
 router.post("/login", validation(validators.login), userServices.login);
-router.post("/google-login", userServices.loginWithGoogle);
+router.post("/google-login",validation(validators.loginWithGoogle), userServices.loginWithGoogle);
 router.get("/discord", userServices.discordRedirect);
 router.get("/discord/callback", userServices.discordLogin);
 router.get('/getToken' , authentication() , authorization(endpoint.token) , userServices.getToken)
@@ -45,7 +45,6 @@ router.post(
 
 router.get(
   "/getAllUsers",
-  authorization(endpoint.allUsers),
   authentication(),
   userServices.getAllUsers,
 );

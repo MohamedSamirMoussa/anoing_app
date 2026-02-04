@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import {
-  createPayment,
+  // createPayment,
   getAccessToken,
   NotFoundError,
   successHandler,
@@ -19,24 +19,24 @@ class DonateServices {
 
   constructor() {}
 
-  createPaymentIntent = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<Response | void> => {
-    try {
-      const userId = req.params as unknown as Types.ObjectId;
-      const { amount } = req.body;
-      const { success_url, url } = await createPayment(amount, userId);
+  // createPaymentIntent = async (
+  //   req: Request,
+  //   res: Response,
+  //   next: NextFunction,
+  // ): Promise<Response | void> => {
+  //   try {
+  //     const userId = req.params as unknown as Types.ObjectId;
+  //     const { amount } = req.body;
+  //     const { success_url, url } = await createPayment(amount, userId);
 
-      return successHandler({
-        res,
-        result: { success_url, url },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+  //     return successHandler({
+  //       res,
+  //       result: { success_url, url },
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // };
 
   createPaypalOrder = async (
     req: Request,

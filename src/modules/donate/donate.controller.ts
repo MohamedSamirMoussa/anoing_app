@@ -7,6 +7,6 @@ export const router = Router({
 })
 
 
-router.post("/create-payment{/:userId}" , donateServices.createPaymentIntent)
+// router.post("/create-payment{/:userId}" , donateServices.createPaymentIntent)
 router.post("/paypal" , donateServices.createPaypalOrder)
 router.post("/paypal/:orderId" , donateServices.capturePaymentWithPaypal)

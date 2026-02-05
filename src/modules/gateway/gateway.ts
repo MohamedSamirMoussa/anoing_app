@@ -1,6 +1,7 @@
 import { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import { LeaderboardModel } from "../../DB";
+import { BadRequestError } from "../../utils";
 
 type ClientData = {
   serverName?: string;
@@ -11,7 +12,7 @@ type ClientData = {
 const clientServers = new Map<string, ClientData>();
 
 export const initIO = (httpServer: HttpServer) => {
-const io = new Server(httpServer, {
+  const io = new Server(httpServer, {
     cors: {
       // Use the environment variable, fallback to localhost
       origin: process.env.FE_URL || "http://localhost:3000",
@@ -19,7 +20,7 @@ const io = new Server(httpServer, {
       credentials: true,
     },
     transports: ["polling", "websocket"],
-    connectTimeout: 45000, 
+    connectTimeout: 45000,
     pingTimeout: 60000,
     pingInterval: 25000,
   });
@@ -34,7 +35,6 @@ const io = new Server(httpServer, {
 
     const { serverName, page, limit } = client;
     const skip = (page - 1) * limit;
-
     try {
       const [leaderboard, totalPlayers, onlineCount] = await Promise.all([
         LeaderboardModel.find({ serverName } as any)
@@ -57,11 +57,11 @@ const io = new Server(httpServer, {
         pagination: {
           page,
           limit,
-          totalPlayers,
-          totalPages: Math.ceil(totalPlayers / limit),
+          totalPlayers: totalPlayers!,
+          totalPages: Math.ceil(totalPlayers! / limit),
         },
         onlineCount,
-        totalPlayers
+        totalPlayers,
       });
     } catch (err) {
       console.error("Leaderboard send error:", err);
@@ -76,8 +76,8 @@ const io = new Server(httpServer, {
       "select_server",
       ({
         serverName,
-        page = 1,
-        limit = 10,
+        page,
+        limit,
       }: {
         serverName: string;
         page?: number;
@@ -85,8 +85,8 @@ const io = new Server(httpServer, {
       }) => {
         clientServers.set(socket.id, {
           serverName: serverName?.toLowerCase().trim() || "",
-          page,
-          limit,
+          page: page!,
+          limit: limit!,
         });
 
         sendLeaderboard(socket.id);

@@ -158,3 +158,23 @@ export const getConnectionWithServer = async (
     return { sortedLeaderboard: [], onlineCount: 0 };
   }
 };
+
+export const getAllServersData = async(serverName:string[])=>{
+  const results = await Promise.all(
+    serverName.map(name => getConnectionWithServer(name))
+  )
+
+  const globalLeaderboard = results.flatMap(r=> r.sortedLeaderboard)
+  const globalOnlineCount = results.reduce((sum , r) => sum + r.onlineCount , 0)
+
+  const sortedGlobalLeaderboard = globalLeaderboard.sort(
+    (a, b) => b.playTime!.seconds! - a.playTime!.seconds!
+  );
+
+  return { 
+    sortedLeaderboard: sortedGlobalLeaderboard, 
+    onlineCount: globalOnlineCount 
+  };
+
+
+}

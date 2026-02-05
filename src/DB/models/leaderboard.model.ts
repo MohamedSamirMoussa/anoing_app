@@ -15,6 +15,9 @@ export interface ILeaderboardUser {
   rank: {
     name: string;
   };
+  isSupported?: {
+    name: string;
+  };
   joinTime: Date;
 }
 
@@ -25,23 +28,24 @@ const schema = new Schema<ILeaderboardUser>(
     username: { type: String },
     is_online: { type: Boolean, required: true },
     playTime: {
-      seconds: { type: Number},
-      minutes: { type: Number},
-      hours: { type: Number},
+      seconds: { type: Number },
+      minutes: { type: Number },
+      hours: { type: Number },
     },
     lastSeen: { type: Date, required: false, default: null },
     avatar: { type: String },
     rank: {
       name: { type: String, required: true },
     },
-
+    isSupported: {
+      name: { type: String, required: false },
+    },
     joinTime: { type: Date, required: false, default: null },
   },
   {
     timestamps: true,
   },
 );
-
 
 schema.index({ "playTime.seconds": -1 });
 

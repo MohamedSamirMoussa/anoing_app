@@ -5,17 +5,21 @@ import {
   NotFoundError,
   successHandler,
 } from "../../utils";
-import { Types } from "mongoose";
+// import { Types } from "mongoose";
 import {
   DonateEnum,
   DonateModel,
   DonateRepository,
+  LeaderboardModel,
+  LeaderboardRepository,
   StatusEnum,
 } from "../../DB";
 import axios from "axios";
+import { login } from "../user";
 
 class DonateServices {
   private donateModel = new DonateRepository(DonateModel);
+  private leaderboardModel = new LeaderboardRepository(LeaderboardModel);
 
   constructor() {}
 
@@ -44,13 +48,11 @@ class DonateServices {
     next: NextFunction,
   ): Promise<Response | void> => {
     try {
-      const { amount } = req.body;
-
-      if (!amount) throw new NotFoundError("amount not found");
-
+      const { amount, username } = req.body;
+      if (!amount?.value || !username) {
+        throw new NotFoundError("All fields are required");
+      }
       const accessToken = await getAccessToken();
-
-      console.log(process.env.PAYPAL_BASE_URL);
 
       const response = await axios.post(
         `${process.env.PAYPAL_BASE_URL}/v2/checkout/orders`,
@@ -58,8 +60,11 @@ class DonateServices {
           intent: "CAPTURE",
           purchase_units: [
             {
-              amount,
-              description: "Test Purchase",
+              custom_id: username,
+              amount: {
+                currency_code: amount.currency_code,
+                value: amount.value,
+              },
             },
           ],
         },
@@ -71,17 +76,12 @@ class DonateServices {
         },
       );
 
-      console.log("RES::::::", response);
-
-      // ✅ في axios الرد يكون في response.data
       const orderId = response.data.id;
 
       return successHandler({ res, result: orderId });
     } catch (error: any) {
-      console.error(
-        "Create Order Error:",
-        error.response?.data || error.message,
-      );
+      console.log(error);
+
       next(error);
     }
   };
@@ -97,7 +97,7 @@ class DonateServices {
 
       const response = await axios.post(
         `${process.env.PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
-        {}, // الـ body يكون فارغ في الـ capture
+        {},
         {
           headers: {
             "Content-Type": "application/json",
@@ -107,10 +107,12 @@ class DonateServices {
       );
 
       const paymentData = response.data;
-
+      const mcUsername =
+        paymentData.purchase_units[0].payments.captures[0].custom_id;
       await this.donateModel.create({
         data: [
           {
+            payerMCusername: mcUsername,
             payerUsername: paymentData.payer?.name,
             donateId: paymentData.id,
             payerId: paymentData?.payer?.payer_id,
@@ -121,13 +123,19 @@ class DonateServices {
         options: { validateBeforeSave: true },
       });
 
+      if (paymentData.status === "COMPLETED") {
+        await this.leaderboardModel.findOneAndUpdate({
+          filter: { username: mcUsername },
+          update: { $set: { isSupported: { name: "Supporter" } } },
+        });
+      }
+
       return successHandler({
         res,
         message: "Payment Captured Successfully",
         result: paymentData,
       });
     } catch (error: any) {
-      console.error("Capture Error:", error.response?.data || error.message);
       next(error);
     }
   };

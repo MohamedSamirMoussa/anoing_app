@@ -16,10 +16,16 @@ export interface IDonateSchema {
   provider: DonateEnum;
   status: StatusEnum;
   email?: string;
+  payerMCusername:string
 }
 
 const donationSchema = new Schema<IDonateSchema>(
   {
+    payerMCusername:{
+      type:String,
+      ref:"Leaderboard",
+      required:true
+    },
     payerUsername: {
       given_name: String,
       surname: String,

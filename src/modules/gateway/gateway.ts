@@ -1,7 +1,6 @@
 import { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import { LeaderboardModel } from "../../DB";
-import { BadRequestError } from "../../utils";
 
 type ClientData = {
   serverName?: string;

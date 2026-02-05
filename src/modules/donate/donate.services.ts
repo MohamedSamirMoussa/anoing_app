@@ -15,7 +15,6 @@ import {
   StatusEnum,
 } from "../../DB";
 import axios from "axios";
-import { login } from "../user";
 
 class DonateServices {
   private donateModel = new DonateRepository(DonateModel);

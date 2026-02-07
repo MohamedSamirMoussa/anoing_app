@@ -2,7 +2,7 @@ import { compare, hash } from "bcryptjs";
 
 export const hashed = (
   planText: string,
-  salt: number = Number(process.env.SALT)
+  salt: number = Number(process.env.SALT) || 10
 ): Promise<string> => {
   return hash(planText, salt);
 };

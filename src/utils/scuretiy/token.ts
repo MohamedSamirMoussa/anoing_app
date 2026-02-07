@@ -103,7 +103,7 @@ export const createLoginCredentials = async (user: HUserDoc) => {
   const access_token = await generateToken({
     payload: { id: user._id },
     secret: signature.access_signature,
-    options: { expiresIn: Number(process.env.ACCESS_TOKEN_TIME_OUT), jwtid },
+    options: { expiresIn: 20, jwtid },
   });
   const refresh_token = await generateToken({
     payload: { id: user._id },

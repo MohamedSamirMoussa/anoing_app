@@ -9,23 +9,11 @@ import { getConnectionWithServer } from "../utils";
 class StartLeaderboardAutoUpdate {
   private leaderboardModel = new LeaderboardRepository(LeaderboardModel);
   private isUpdate: boolean = false;
-  private rconCache: Map<string, { data: any; timestamp: number }> = new Map();
-  private cacheDuration = 30000;
+
   constructor() {
+    // تجنب التشغيل وقت الـ Build
+    if (process.env.NEXT_PHASE === "phase-production-build") return;
     this.startAutoUpdate();
-  }
-
-  private async getCachedRconData(serverName: string) {
-    const now = Date.now();
-    const cached = this.rconCache.get(serverName);
-    if (cached && now - cached?.timestamp < this.cacheDuration) {
-      console.log(`[Cache] Using cached data for ${serverName}`);
-      return cached?.data;
-    }
-
-    const data = await getConnectionWithServer(serverName);
-    this.rconCache.set(serverName, { data, timestamp: now });
-    return data;
   }
 
   public startAutoUpdate(
@@ -38,23 +26,43 @@ class StartLeaderboardAutoUpdate {
 
     const update = async () => {
       try {
-        for (const serverName of servers) {
-          const { sortedLeaderboard } =
-            await this.getCachedRconData(serverName);
+        console.log(
+          `[AutoUpdate] Starting parallel update for ${servers.length} servers...`,
+        );
 
-          if (sortedLeaderboard && Array.isArray(sortedLeaderboard)) {
-            const bulkData: AnyBulkWriteOperation<HLeaderboardDoc>[] =
-              Array.from(sortedLeaderboard.values()).map((user) => {
-                return {
-                    
+        await Promise.all(
+          servers.map(async (serverName) => {
+            try {
+              console.log(`[Checking] Attempting to fetch: ${serverName}`);
+              const response = await getConnectionWithServer(serverName);
+
+              if (!response || !response.sortedLeaderboard) {
+                console.warn(
+                  `[AutoUpdate] ⚠️ ${serverName} returned no leaderboard data.`,
+                );
+                return;
+              }
+
+              // تصحيح: التعامل مع المصفوفة مباشرة دون .values()
+              const sortedLeaderboard = response.sortedLeaderboard;
+              const leaderboardData = Array.isArray(sortedLeaderboard)
+                ? sortedLeaderboard
+                : Array.from((sortedLeaderboard as any).values());
+
+              // معالجة حالة السيرفر الفاضي (مثل SB4)
+              if (leaderboardData.length === 0) {
+                console.log(
+                  `[AutoUpdate] ✅ ${serverName} is empty (0 players), skipping DB.`,
+                );
+                return;
+              }
+
+              const bulkData: AnyBulkWriteOperation<HLeaderboardDoc>[] =
+                leaderboardData.map((user: any) => ({
                   updateOne: {
-                    filter: {
-                      username: user.username,
-                      serverName: serverName,
-                    },
+                    filter: { username: user.username, serverName: serverName },
                     update: {
                       $set: {
-                        // ⚠️ ضروري: كل الحقول اللي عايز تتعدل
                         is_online: user.is_online,
                         username: user.username,
                         serverName: serverName,
@@ -68,26 +76,28 @@ class StartLeaderboardAutoUpdate {
                         totalPlayTime: user.playTime,
                         updatedAt: new Date(),
                       },
-                      $setOnInsert: {
-                        createdAt: new Date(),
-                      },
+                      $setOnInsert: { createdAt: new Date() },
                     },
                     upsert: true,
                   },
-                };
-              });
+                }));
 
-            if (bulkData.length) {
-              await this.leaderboardModel.bulkWrite(bulkData as any);
+              if (bulkData.length > 0) {
+                await this.leaderboardModel.bulkWrite(bulkData as any);
+                console.log(
+                  `[AutoUpdate] ✅ ${serverName} updated: ${leaderboardData.length} players`,
+                );
+              }
+            } catch (serverError: any) {
+              console.error(
+                `[AutoUpdate] ❌ Error for ${serverName}:`,
+                serverError.message,
+              );
             }
-
-            console.log(
-              `[AutoUpdate] Updated ${serverName}: ${sortedLeaderboard.length} players`,
-            );
-          }
-        }
+          }),
+        );
       } catch (error) {
-        console.log("Leaderboard update error:", error);
+        console.log("[AutoUpdate] Global loop error:", error);
       } finally {
         setTimeout(update, interval);
       }

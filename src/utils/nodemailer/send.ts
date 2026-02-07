@@ -4,9 +4,9 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 import { BadRequestError } from "../errors/errors";
 
 export const sendEmail = async (data: Mail.Options): Promise<void> => {
-    if(!data.html && data.attachments?.length && !data.text) {
-        throw new BadRequestError("Send email is corrupted")
-    }
+  if (!data.html && data.attachments?.length && !data.text) {
+    throw new BadRequestError("Send email is corrupted");
+  }
   const transporter: Transporter<
     SMTPTransport.SentMessageInfo,
     SMTPTransport.Options
@@ -18,8 +18,8 @@ export const sendEmail = async (data: Mail.Options): Promise<void> => {
     },
   });
 
- await transporter.sendMail({
-    from: `"From:${process.env.APP_EMAIL}" "APP:${process.env.APP_NAME}"`,
+  await transporter.sendMail({
+    from: `"Anoing" <${process.env.APP_EMAIL}>`,
     ...data,
   });
 };

@@ -23,7 +23,7 @@ const bootstrap = async (app: Express): Promise<void> => {
   app.use(
     helmet(),
     cors({
-      origin: process.env.FE_URL || "http://localhost:3000",
+      origin: process.env.FE_URL as string || "http://localhost:3000",
       credentials: true,
     }),
     rateLimit({

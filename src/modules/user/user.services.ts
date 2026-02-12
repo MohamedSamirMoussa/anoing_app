@@ -154,8 +154,6 @@ class UserServices {
         message: "User registered successfully",
       });
     } catch (error) {
-      console.log(error);
-
       return next(error);
     }
   };

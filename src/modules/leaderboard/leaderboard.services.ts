@@ -42,9 +42,6 @@ class LeaderboardServices {
       const searchResult = await this.leaderboardModel.find({
         filter: { username: { $regex: username, $options: "i" } },
       });
-
-      console.log(searchResult);
-
       return successHandler({
         res,
         result: { searchResult },

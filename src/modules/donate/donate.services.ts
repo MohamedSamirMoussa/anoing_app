@@ -79,8 +79,6 @@ class DonateServices {
 
       return successHandler({ res, result: orderId });
     } catch (error: any) {
-      console.log(error);
-
       next(error);
     }
   };

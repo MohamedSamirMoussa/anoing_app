@@ -15,3 +15,4 @@ router.post(
   blogServices.createBlog,
 );
 router.get("/", blogServices.getBlogs);
+router.delete("/:id", authentication() , blogServices.deleteBlog);

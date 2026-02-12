@@ -2,6 +2,7 @@ import { Request } from "express";
 import multer from "multer";
 import os from "node:os"
 import {v4 as uuid} from 'uuid'
+import { BadRequestError } from "../errors/errors";
 export enum StorageEnum {
     memory="memory",
     disk="disk"
@@ -16,5 +17,15 @@ export const cloudFileUpload = ({storageApproach = StorageEnum.memory}:{storageA
     }
   });
 
-  return multer({ storage });
+  const fileFilter = (req:Request , file:Express.Multer.File , cb:multer.FileFilterCallback)=>{
+    if(file.mimetype.startsWith("image/")) {
+      cb(null , true)
+    } else {
+      cb(new BadRequestError("Only images are allowed") as any , false)
+    }
+  }
+
+  return multer({ storage , fileFilter , limits:{
+    fileSize: 5 * 1024 * 1024
+  } });
 };

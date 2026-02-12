@@ -22,7 +22,7 @@ class StartLeaderboardAutoUpdate {
     if (this.isUpdate) return;
     this.isUpdate = true;
 
-    const servers = ["AllTheMons"];
+    const servers = ["SB4"];
 
     const update = async () => {
       try {

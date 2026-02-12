@@ -1,3 +1,4 @@
+import { populate } from "dotenv";
 import {
   CreateOptions,
   DeleteResult,
@@ -6,6 +7,7 @@ import {
   Model,
   MongooseBaseQueryOptions,
   MongooseUpdateQueryOptions,
+  PopulateOption,
   ProjectionType,
   QueryOptions,
   Types,
@@ -50,11 +52,13 @@ export abstract class DBrepository<TDocument> {
   async findById({
     id,
     options,
+    populate
   }: {
     id: Types.ObjectId | string;
     options?: QueryOptions<TDocument>;
+    populate?:any
   }): Promise<HydratedDocument<TDocument> | null> {
-    return await this.model.findById(id, undefined, options);
+    return await this.model.findById(id, undefined, options).populate(populate);
   }
 
   async updateOne({
@@ -100,11 +104,23 @@ export abstract class DBrepository<TDocument> {
     filter = {},
     options,
     sort,
+    populate,
   }: {
     filter: any;
     options?: QueryOptions<TDocument>;
     sort?: any;
+    populate?: any
   }) {
-    return await this.model.find(filter, undefined, options).sort(sort);
+    let query = this.model.find(filter, undefined, options);
+
+    if (sort) {
+      query = query.sort(sort);
+    }
+
+    if (populate) {
+      query = query.populate(populate);
+    }
+
+    return await query;
   }
 }

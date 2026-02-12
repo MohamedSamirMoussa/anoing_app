@@ -12,9 +12,9 @@ interface IRCONConfig {
 }
 
 const serverConfigs: Record<string, IRCONConfig> = {
-  "AllTheMons": {
+  "SB4": {
     host: process.env.RCON_HOST!,
-    port: Number(process.env.RCON_PORT_ALL_THE_MOON),
+    port: Number(process.env.RCON_PORT_SB4),
     password: process.env.RCON_PASS!,
     timeout: Number(process.env.RCON_TIMEOUT || 5000),
   },
